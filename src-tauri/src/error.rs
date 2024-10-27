@@ -9,6 +9,13 @@ pub enum DatabaseError {
     NativeDbError(#[from] Error),
     #[error("User Not Found: {0}")]
     UserNotFound(String),
+    #[error("OsFolders Not Found: {0}")]
+    OsFoldersNotFound(String),
+    #[error("{0:#?}")]
+    IoError(#[from] io::Error),
+    #[error("{0:#?}")]
+    TuariError(#[from] tauri::Error),
+
 }
 
 #[derive(thiserror::Error, Debug)]
