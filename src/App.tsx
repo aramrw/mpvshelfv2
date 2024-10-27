@@ -3,13 +3,13 @@ import "./App.css";
 import Navbar from "./main-components/navbar";
 //import { User } from "../@/libs/models";
 import { useNavigate } from "@solidjs/router";
-import getDefaultUser from "./tauri-cmds/get_default_user";
+import { get_default_user } from "./tauri-cmds/users";
 
 function App() {
   const navigate = useNavigate();
 
   onMount(async () => {
-    getDefaultUser().then((user: unknown) => {
+    get_default_user().then((user: unknown) => {
       if (user) {
         navigate("/dashboard");
       } else {
@@ -20,8 +20,6 @@ function App() {
 
   return (
     <main>
-      <Navbar />
-      App
     </main>
   );
 }
