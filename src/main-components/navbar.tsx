@@ -9,7 +9,7 @@ import {
 
 export default function NavBar() {
   return (
-    <nav class="w-full h-8 bg-primary shadow-md">
+    <nav class="sm:px-2 md:px-16 lg:px-36 xl:px-44 w-full h-8 bg-primary shadow-md">
       <ul class="h-full w-full flex flex-row items-center justify-between">
         <Sheet>
           <SheetTrigger class="h-full outline-none">
@@ -17,7 +17,7 @@ export default function NavBar() {
               <IconMenu class="text-secondary fill-accent stroke-[2]" />
             </li>
           </SheetTrigger>
-          <SheetContent side="top" class="p-0 flex justify-center items-center border-none">
+          <SheetContent side="top" class="p-0 sm:px-2 md:px-16 lg:px-36 xl:px-44  flex justify-center items-center border-none">
             <ul class="h-full w-full flex flex-row items-center">
               <li class="p-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
                 <IconChalkboard class="text-secondary fill-accent stroke-[1.5]" />
