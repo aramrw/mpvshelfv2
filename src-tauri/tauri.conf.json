@@ -18,6 +18,12 @@
 			}
 		],
 		"security": {
+			"assetProtocol": {
+				"scope": [
+					"**/**"
+				],
+				"enable": true
+			},
 			"csp": null
 		}
 	},
@@ -31,6 +37,8 @@
 			"icons/icon.icns",
 			"icons/icon.ico"
 		],
-		"externalBin": ["bin/ffmpeg"]
+		"externalBin": [
+			"bin/ffmpeg"
+		]
 	}
 }
