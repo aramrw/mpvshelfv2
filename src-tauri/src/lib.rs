@@ -1,16 +1,21 @@
+#![feature(iterator_try_collect)]
 use database::init_database;
 use tauri::Manager;
 
 mod database;
 mod error;
 mod fs;
+mod misc;
 
-use crate::database::{get_default_user, update_user};
-use crate::fs::read_os_folder_dir;
+use crate::database::{
+    delete_os_folders, get_default_user, get_os_folders, update_os_folders, update_user,
+};
+use crate::fs::{check_cover_img_exists, read_os_folder_dir, show_in_folder};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
@@ -22,7 +27,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_default_user,
             update_user,
-            read_os_folder_dir
+            get_os_folders,
+            update_os_folders,
+            delete_os_folders,
+            read_os_folder_dir,
+            check_cover_img_exists,
+            show_in_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

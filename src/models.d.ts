@@ -10,5 +10,18 @@ export type UserFormType = {
 export type OsFolder = {
   user_id: string,
   path: string,
-  cover_img: string,
+	title: string,
+	os_videos: OsVideo[], 
+  cover_img_path: string | undefined,
+	update_date: string,
+	update_time: string,
+}
+
+export type OsVideo = {
+  user_id: string,
+  path: string,
+	title: string,
+  cover_img_path: string | undefined,
+	update_date: string,
+	update_time: string,
 }
