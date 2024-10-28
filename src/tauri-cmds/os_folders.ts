@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { OsFolder } from "src/models";
 
-const get_os_folders = async (userId: string) => {
+export async function get_os_folders(userId: string) {
   try {
     const osFolders: OsFolder[] = await invoke("get_os_folders", { userId });
     return osFolders;
@@ -43,4 +43,4 @@ const read_os_folder_dir = async (path: string, userId: string, coverImgPath?: s
 }
 
 
-export { read_os_folder_dir, get_os_folders, delete_os_folders, update_os_folders };
+export { read_os_folder_dir, delete_os_folders, update_os_folders };
