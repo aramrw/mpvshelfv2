@@ -6,11 +6,13 @@ mod database;
 mod error;
 mod fs;
 mod misc;
+mod mpv;
 
 use crate::database::{
     delete_os_folders, get_default_user, get_os_folders, update_os_folders, update_user,
 };
 use crate::fs::{check_cover_img_exists, read_os_folder_dir, show_in_folder};
+use crate::mpv::mpv_system_check;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -33,6 +35,7 @@ pub fn run() {
             read_os_folder_dir,
             check_cover_img_exists,
             show_in_folder,
+            mpv_system_check,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
