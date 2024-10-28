@@ -22,6 +22,7 @@ pub mod data {
             pub id: String,
             #[secondary_key(unique)]
             pub username: String,
+            pub settings: Settings,
         }
 
         #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -52,6 +53,18 @@ pub mod data {
             pub update_date: String,
             pub update_time: String,
         }
+
+        #[derive(Serialize, Deserialize, Clone, Debug)]
+        #[native_model(id = 5, version = 1)]
+        #[native_db]
+        pub struct Settings {
+            #[primary_key]
+            pub user_id: String,
+            pub mpv_path: String,
+            pub update_date: String,
+            pub update_time: String,
+        }
+
     }
 }
 
