@@ -29,13 +29,19 @@ export default function CreateProfile() {
     event.preventDefault();
     const dbUser: UserType = {
       id: "1",
-      username: user().username
+      username: user().username,
+      settings: {
+        user_id: "1",
+        mpv_path: "",
+        update_date: "",
+        update_time: "",
+      }
     };
     invoke("update_user", { user: dbUser }).then(() => {
       navigate("/dashboard");
     }).catch((e) => {
-				console.error("Error updating user:", e);
-			});
+      console.error("Error updating user:", e);
+    });
   };
 
   createEffect(() => {
