@@ -1,13 +1,13 @@
 import "../App.css";
-import { IconAdjustments, IconAdjustmentsSpark, IconChalkboard, IconDeviceDesktopAnalytics, IconHome, IconList, IconMenu, IconMovie, IconPlaylist, IconSettings } from "@tabler/icons-solidjs";
+import { IconAdjustments, IconChalkboard, IconDeviceDesktopAnalytics, IconList, IconMenu } from "@tabler/icons-solidjs";
 import {
   Sheet,
   SheetContent,
   SheetTrigger
 } from "../components/ui/sheet";
 
-
 export default function NavBar() {
+
   return (
     <nav class="sm:px-2 md:px-16 lg:px-36 xl:px-44 w-full h-8 bg-primary shadow-md">
       <ul class="h-full w-full flex flex-row items-center justify-between">
