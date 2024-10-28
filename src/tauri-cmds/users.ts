@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { UserType } from "src/models";
 
-const get_default_user = async (): Promise<UserType | null> => {
+export default async function get_default_user() {
   try {
     const user: UserType = await invoke("get_default_user");
     return user;
@@ -11,4 +11,3 @@ const get_default_user = async (): Promise<UserType | null> => {
   }
 };
 
-export { get_default_user };
