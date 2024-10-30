@@ -22,7 +22,18 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { UserType } from "../../../models";
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { createSignal, onMount } from "solid-js";
-import { Transition } from "solid-transition-group";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  AlertDialogAction
+} from "../../../components/ui/alert-dialog";
+
 
 export default function MpvTabSection({ user }: { user: UserType | undefined }) {
 
@@ -43,8 +54,9 @@ export default function MpvTabSection({ user }: { user: UserType | undefined }) 
             <IconMpv class="w-4 stroke-[2.4px]" />
             Mpv Settings
           </CardTitle>
-          <CardDescription>
+          <CardDescription class="flex flex-col gap-2 items-start">
             Tweak Mpv player's config, behavior, & more.
+						<DownloadMpvAlertDialog />
           </CardDescription>
         </CardHeader>
         <CardContent class="w-fit">
@@ -90,6 +102,32 @@ export default function MpvTabSection({ user }: { user: UserType | undefined }) 
         </CardContent>
       </Card>
     </TabsContent>
+  )
+}
+
+function DownloadMpvAlertDialog() {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger>
+				<Button variant="outline">
+					Download Mpv
+				</Button>
+			</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Download Mpv</AlertDialogTitle>
+          <AlertDialogDescription>
+						Mpv Shelf can download, install, & manage mpv for you.
+						Would you like to continue?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogClose>Cancel</AlertDialogClose>
+          <AlertDialogAction>Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
   )
 }
 
