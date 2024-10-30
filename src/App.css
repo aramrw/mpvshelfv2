@@ -19,7 +19,7 @@
         --secondary: 240 4.8% 95.9%;
         --secondary-foreground: 240 5.9% 10%;
 
-        --muted: 240 4.8% 95.9%;
+        --muted: 220 11.1% 89.9%;
         --muted-foreground: 240 3.8% 46.1%;
 
         --accent: 240 10% 25%;
@@ -73,4 +73,18 @@
     body {
         @apply bg-background text-foreground;
     }
+}
+
+.slide-fade-enter-active {
+	transition: opacity 0.5s;
+}
+.slide-fade-exit-active {
+  transition: opacity 0.1s, transform 0.3s;
+}
+.slide-fade-enter,
+.slide-fade-exit-to {
+  opacity: 0;
+}
+.slide-fade-enter {
+  opacity: 1;
 }
