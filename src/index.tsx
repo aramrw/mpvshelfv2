@@ -3,7 +3,6 @@ import "./App.css";
 import { lazy } from "solid-js";
 import { Router } from "@solidjs/router";
 import { render } from "solid-js/web";
-import { ToastRegion, ToastList } from "./components/ui/toast"
 
 const routes = [
   {
@@ -15,8 +14,12 @@ const routes = [
     component: lazy(() => import("./dashboard/dashboard")),
   },
   {
-    path: "/library/:folderPath",
+    path: "/library/:folder",
     component: lazy(() => import("./routes/folder-library/library")),
+  },
+  {
+    path: "/settings/:section",
+    component: lazy(() => import("./routes/settings/settings")),
   },
   {
     path: "/create-profile",
