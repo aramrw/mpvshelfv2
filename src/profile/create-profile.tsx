@@ -10,7 +10,7 @@ import {
 import { ImageRoot, ImageFallback, Image } from "../components/ui/image";
 import { IconCameraFilled } from "@tabler/icons-solidjs";
 import { createSignal, createEffect, For } from "solid-js";
-import { UserType, UserFormType } from "src/models";
+import { UserType, UserFormType } from "../models";
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "@solidjs/router";
 
@@ -32,7 +32,7 @@ export default function CreateProfile() {
       username: user().username,
       settings: {
         user_id: "1",
-        mpv_path: "",
+        autoplay: true,
         update_date: "",
         update_time: "",
       }
