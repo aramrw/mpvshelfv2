@@ -1,26 +1,38 @@
 import "../App.css";
-import { IconAdjustments, IconChalkboard, IconDeviceDesktopAnalytics, IconList, IconMenu } from "@tabler/icons-solidjs";
+import { IconAdjustments, IconArrowNarrowLeftDashed, IconChalkboard, IconDeviceDesktopAnalytics, IconList, IconMenu } from "@tabler/icons-solidjs";
 import {
   Sheet,
   SheetContent,
   SheetTrigger
 } from "../components/ui/sheet";
+import { A, useNavigate } from "@solidjs/router";
 
 export default function NavBar() {
 
+	const navigate = useNavigate();
+
   return (
-    <nav class="sm:px-2 md:px-16 lg:px-36 xl:px-44 w-full h-8 bg-primary shadow-md">
+    <nav class="sm:px-2 md:px-16 lg:px-36 xl:px-44 w-full h-8 bg-primary shadow-md z-[100]">
       <ul class="h-full w-full flex flex-row items-center justify-between">
         <Sheet>
-          <SheetTrigger class="h-full outline-none">
-            <li class="px-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
-              <IconMenu class="text-secondary fill-accent stroke-[2]" />
+          <div class="flex flex-row h-full">
+            <li class="px-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer"
+						onClick={() => navigate(-1)}
+					>
+              <IconArrowNarrowLeftDashed class="text-secondary fill-accent stroke-[2]" />
             </li>
-          </SheetTrigger>
+            <SheetTrigger class="h-full outline-none">
+              <li class="px-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
+                <IconMenu class="text-secondary fill-accent stroke-[2]" />
+              </li>
+            </SheetTrigger>
+          </div>
           <SheetContent side="top" class="p-0 sm:px-2 md:px-16 lg:px-36 xl:px-44  flex justify-center items-center border-none">
             <ul class="h-full w-full flex flex-row items-center">
               <li class="p-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
-                <IconChalkboard class="text-secondary fill-accent stroke-[1.5]" />
+                <A href="/dashboard">
+                  <IconChalkboard class="text-secondary fill-accent stroke-[1.5]" />
+                </A>
               </li>
               <li class="p-1 w-5 h-full flex flex-row justify-center items-center">
               </li>
@@ -45,7 +57,9 @@ export default function NavBar() {
             <IconDeviceDesktopAnalytics class="text-secondary fill-accent stroke-[1.5]" />
           </li>
           <li class="px-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
-            <IconAdjustments class="text-secondary fill-accent stroke-[1.5]" />
+            <A href="/settings/default">
+              <IconAdjustments class="text-secondary fill-accent stroke-[1.5]" />
+            </A>
           </li>
         </div>
       </ul>
