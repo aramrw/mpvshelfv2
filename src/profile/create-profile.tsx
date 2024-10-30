@@ -10,7 +10,7 @@ import {
 import { ImageRoot, ImageFallback, Image } from "../components/ui/image";
 import { IconCameraFilled } from "@tabler/icons-solidjs";
 import { createSignal, createEffect, For } from "solid-js";
-import { UserType, UserFormType } from "src/models";
+import { UserType, UserFormType } from "../models";
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "@solidjs/router";
 
@@ -29,13 +29,19 @@ export default function CreateProfile() {
     event.preventDefault();
     const dbUser: UserType = {
       id: "1",
-      username: user().username
+      username: user().username,
+      settings: {
+        user_id: "1",
+        autoplay: true,
+        update_date: "",
+        update_time: "",
+      }
     };
     invoke("update_user", { user: dbUser }).then(() => {
       navigate("/dashboard");
     }).catch((e) => {
-				console.error("Error updating user:", e);
-			});
+      console.error("Error updating user:", e);
+    });
   };
 
   createEffect(() => {

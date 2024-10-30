@@ -2,7 +2,7 @@ import { IconFilePlus, IconFolderPlus, IconPlus } from "@tabler/icons-solidjs";
 import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
 import { read_os_folder_dir } from "../../tauri-cmds/os_folders";
 import { open } from '@tauri-apps/plugin-dialog';
-import { OsFolder, UserType } from "src/models";
+import { OsFolder, UserType } from "../../models";
 import { Accessor, Setter } from "solid-js";
 import { Transition } from "solid-transition-group";
 

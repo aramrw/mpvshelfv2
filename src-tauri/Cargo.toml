@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
+tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
@@ -30,4 +30,6 @@ thiserror = "1.0.65"
 phf = "0.11.2"
 tauri-plugin-os = "2"
 chrono = "0.4.38"
+regex = { version= "1.11.1", features = ["std", "perf"] }
+rayon = "1.10.0"
 

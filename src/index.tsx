@@ -14,8 +14,12 @@ const routes = [
     component: lazy(() => import("./dashboard/dashboard")),
   },
   {
-    path: "/library/:folderPath",
+    path: "/library/:folder",
     component: lazy(() => import("./routes/folder-library/library")),
+  },
+  {
+    path: "/settings/:section",
+    component: lazy(() => import("./routes/settings/settings")),
   },
   {
     path: "/create-profile",

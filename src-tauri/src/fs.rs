@@ -1,9 +1,13 @@
-use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+//use std::time::Instant;
+use std::{fs, io};
 use std::{fs::read_dir, process::Command};
 
 use crate::database::data::v1::OsVideo;
+use crate::database::update_os_videos;
+use crate::error::MpvError;
 use crate::misc::get_date_time;
+use crate::mpv::EPISODE_TITLE_REGEX;
 use crate::{
     database::{data::v1::OsFolder, update_os_folders},
     error::DatabaseError,
@@ -13,16 +17,20 @@ use tauri_plugin_shell::ShellExt;
 
 use phf::phf_set;
 
-static SUPPORTED_VIDEO_FORMATS: phf::Set<&'static str> = phf_set! {
+pub static SUPPORTED_VIDEO_FORMATS: phf::Set<&'static str> = phf_set! {
     "mp4", "mkv", "webm", "avi", "mov", "flv", "wmv", "mpg", "mpeg", "m4v",
     "3gp", "ogg", "mxf", "ts", "vob", "m2ts", "mts", "asf", "rm", "rmvb",
     "divx", "dv", "f4v", "f4p", "f4a", "f4b", "hevc"
 };
 
-static SUPPORTED_AUDIO_FORMATS: phf::Set<&'static str> = phf_set! {
+pub static SUPPORTED_AUDIO_FORMATS: phf::Set<&'static str> = phf_set! {
     "aac", "ac3", "aiff", "alac", "amr", "ape", "au", "dts", "flac", "m4a",
     "m4b", "mka", "mlp", "mp3", "oga", "ogg", "opus", "ra", "rm", "tak",
     "truehd", "tta", "voc", "wav", "wma", "wv",
+};
+
+pub static SUPPORTED_SUBTITLE_FORMATS: phf::Set<&'static str> = phf_set! {
+    "srt", "ass", "ssa", "sub", "idx", "vtt", "lrc",
 };
 
 #[command]
@@ -93,6 +101,7 @@ pub fn read_os_folder_dir(
             create_os_video(
                 &handle,
                 user_id.clone(),
+                path.clone(),
                 vid_path,
                 update_date.clone(),
                 update_time.clone(),
@@ -105,12 +114,14 @@ pub fn read_os_folder_dir(
         user_id,
         path,
         title: os_folder.file_name().unwrap().to_string_lossy().to_string(),
-        os_videos,
+        os_videos: os_videos.clone(),
+        last_watched_video: os_videos[0].clone(),
         cover_img_path,
         update_date,
         update_time,
     };
 
+    update_os_videos(&handle, os_videos, None)?;
     update_os_folders(handle, vec![folder.clone()])?;
 
     Ok(folder)
@@ -119,6 +130,7 @@ pub fn read_os_folder_dir(
 fn create_os_video(
     handle: &AppHandle,
     user_id: String,
+    main_folder_path: String,
     path: String,
     update_date: String,
     update_time: String,
@@ -143,9 +155,11 @@ fn create_os_video(
 
     let vid = OsVideo {
         user_id,
+        main_folder_path,
         path,
         title,
         cover_img_path: Some(cover_img_path),
+        watched: false,
         update_date,
         update_time,
     };
@@ -179,7 +193,7 @@ fn join_cover_img_path(
     let cover_img_full_path = app_data_dir
         .join("frames")
         .join(title) // This is the stem without the original extension
-        .with_extension("png")
+        .with_extension("jpg")
         .to_string_lossy()
         .to_string();
     Ok(cover_img_full_path)
@@ -192,7 +206,7 @@ fn call_ffmpeg_sidecar(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let sidecar_cmd = handle.shell().sidecar("ffmpeg").unwrap().args([
         "-ss",
-        "2",
+        "5",
         "-i",
         entry_path.as_ref(),
         "-frames:v",
@@ -201,9 +215,83 @@ fn call_ffmpeg_sidecar(
     ]);
 
     let (mut _rx, mut _child) = sidecar_cmd.spawn().unwrap();
-    println!("running ffmpegsidecar function");
+    //println!("running ffmpegsidecar function");
 
     Ok(())
+}
+
+pub fn normalize_path(path: &str) -> PathBuf {
+    let normalized = path
+        .replace("/", std::path::MAIN_SEPARATOR_STR)
+        .replace("\\", std::path::MAIN_SEPARATOR_STR);
+    Path::new(&normalized).to_path_buf()
+}
+
+pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Result<u32, MpvError> {
+    let mut media_files: Vec<fs::DirEntry> = fs::read_dir(parent_path)
+        .unwrap()
+        .filter_map(|entry| entry.ok())
+        .collect();
+
+    media_files.retain(|entry| {
+        if let Ok(metadata) = entry.metadata() {
+            if metadata.is_file() {
+                if let Some(extension) = entry.path().extension() {
+                    if let Some(extension_str) = extension.to_str() {
+                        let extension_str = extension_str.to_lowercase();
+                        // Check if it's a supported video, audio, or subtitle format
+                        return SUPPORTED_VIDEO_FORMATS.get_key(&extension_str).is_some()
+                            || SUPPORTED_AUDIO_FORMATS.get_key(&extension_str).is_some()
+                            || SUPPORTED_SUBTITLE_FORMATS.get_key(&extension_str).is_some();
+                    }
+                }
+            }
+        }
+        false
+    });
+
+    // media_files.sort_by(|a, b| {
+    //     let nums_a: Vec<u32> = EPISODE_TITLE_REGEX
+    //         .find_iter(&a.file_name().to_string_lossy())
+    //         .filter_map(|m| m.as_str().parse::<u32>().ok())
+    //         .collect();
+    //     let nums_b: Vec<u32> = EPISODE_TITLE_REGEX
+    //         .find_iter(&b.file_name().to_string_lossy())
+    //         .filter_map(|m| m.as_str().parse::<u32>().ok())
+    //         .collect();
+    //     nums_a.cmp(&nums_b)
+    // });
+
+    media_files.sort_by(|a, b| {
+        // Extract the episode number from the title using regex
+        let num_a = EPISODE_TITLE_REGEX
+            .captures(&a.file_name().to_string_lossy())
+            .and_then(|caps| caps.get(1)) // Assuming the first capturing group contains the episode number
+            .and_then(|m| m.as_str().parse::<u32>().ok())
+            .unwrap_or(0);
+
+        let num_b = EPISODE_TITLE_REGEX
+            .captures(&b.file_name().to_string_lossy())
+            .and_then(|caps| caps.get(1))
+            .and_then(|m| m.as_str().parse::<u32>().ok())
+            .unwrap_or(0);
+
+        num_a.cmp(&num_b)
+    });
+
+    let selected_video_file_name = match Path::new(&selected_video_path).file_name() {
+        Some(file_name) => file_name,
+        None => return Err(MpvError::InvalidPathName(selected_video_path)),
+    };
+
+    let current_video_index = media_files
+        .iter()
+        .position(|entry| entry.file_name() == selected_video_file_name);
+
+    match current_video_index {
+        Some(index) => Ok(index as u32),
+        None => Err(MpvError::OsVideoNotFound(selected_video_path)),
+    }
 }
 
 #[tauri::command]

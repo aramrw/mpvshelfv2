@@ -4,7 +4,7 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "start": "vite",
+    "start": "vite ",
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
@@ -13,6 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "@kobalte/core": "^0.13.7",
+    "@solid-primitives/scroll": "^2.0.23",
     "@solidjs/router": "^0.14.10",
     "@tabler/icons-solidjs": "^3.20.0",
     "@tauri-apps/api": "^2",
