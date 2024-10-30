@@ -28,7 +28,6 @@ import IconMpv from "../../main-components/icons/icon-mpv";
 import ProfileTabSection from "./tab-sections/profile";
 import SettingsErrorCard from "./tab-sections/error-card";
 import NavBar from "../../main-components/navbar";
-import { Transition } from "solid-transition-group";
 
 const handleSettingParams = (params: Params): string[] | string => {
   // example param: mpv_ERROR_Error: This is a test Error.
