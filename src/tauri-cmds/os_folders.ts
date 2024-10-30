@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { OsFolder } from "src/models";
+import { OsFolder } from "../models";
 
 export async function get_os_folders(userId: string) {
   try {
