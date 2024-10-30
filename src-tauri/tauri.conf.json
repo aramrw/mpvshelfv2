@@ -4,7 +4,7 @@
 	"version": "0.1.0",
 	"identifier": "com.mpvshelfv2.dev",
 	"build": {
-		"beforeDevCommand": "pnpm dev",
+		"beforeDevCommand": "pnpm --max-http-header-size=size dev",
 		"devUrl": "http://localhost:1420",
 		"beforeBuildCommand": "pnpm build",
 		"frontendDist": "../dist"
@@ -36,6 +36,9 @@
 			"icons/128x128@2x.png",
 			"icons/icon.icns",
 			"icons/icon.ico"
+		],
+		"resources": [
+			"resources/**/*"
 		],
 		"externalBin": [
 			"bin/ffmpeg"
