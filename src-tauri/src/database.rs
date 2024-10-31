@@ -233,7 +233,7 @@ pub fn get_os_videos(
         num_a.cmp(&num_b) 
     });
 
-    println!("{:#?}", folders);
+    //println!("{:#?}", folders);
 
     Ok(folders)
 }
@@ -285,7 +285,7 @@ pub fn update_user(user: User, handle: AppHandle) -> Result<(), DatabaseError> {
     let db = Builder::new().open(&DBMODELS, db_path)?;
 
     let rtx = db.rw_transaction()?;
-    rtx.insert(user)?;
+    rtx.upsert(user)?;
     rtx.commit()?;
 
     Ok(())
