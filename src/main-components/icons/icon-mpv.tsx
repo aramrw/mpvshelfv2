@@ -1,7 +1,4 @@
-export type DynamicPropsType = {
-  class?: string,
-  onClick?: (event: MouseEvent) => void
-}
+import { DynamicPropsType } from "./icon-type";
 
 export default function IconMpv(props: DynamicPropsType) {
   return (
