@@ -33,8 +33,5 @@ chrono = "0.4.38"
 regex = { version= "1.11.1", features = ["std", "perf"] }
 rayon = "1.10.0"
 reqwest = "0.12.9"
-specta = "=2.0.0-rc.20"
-specta-typescript = "0.0.7"
-tauri-specta = { version = "=2.0.0-rc.20", features = ["derive", "typescript"] }
 futures-util = "0.3.31"
-
+tokio = { version = "1.41.0", features = ["full"] }
