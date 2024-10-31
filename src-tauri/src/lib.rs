@@ -1,8 +1,6 @@
 #![feature(iterator_try_collect)]
 
 use database::init_database;
-use specta_typescript::Typescript;
-use tauri_specta::collect_commands;
 use tauri::Manager;
 
 mod database;
@@ -16,8 +14,7 @@ use crate::database::{
     delete_os_folders, get_default_user, get_os_folder_by_path, get_os_folders, get_os_videos,
     get_user_by_id, update_os_folders, update_user,
 };
-use crate::misc::download_mpv_binary;
-use crate::fs::{check_cover_img_exists, read_os_folder_dir, show_in_folder};
+use crate::fs::{check_cover_img_exists, read_os_folder_dir, show_in_folder, download_mpv_binary};
 use crate::mpv::{mpv_system_check, play_video};
 use crate::tray::init_tray;
 
