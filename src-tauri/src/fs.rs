@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 //use std::time::Instant;
-use std::{fs, io};
+use futures_util::{StreamExt, TryStreamExt};
+use tokio::io::AsyncWriteExt;
+use std::{env, fs, io};
 use std::{fs::read_dir, process::Command};
 
 use crate::database::data::v1::OsVideo;
@@ -12,8 +14,11 @@ use crate::{
     database::{data::v1::OsFolder, update_os_folders},
     error::DatabaseError,
 };
-use tauri::{command, AppHandle, Manager};
+use reqwest::Client;
+use tauri::{command, AppHandle, Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
+
+use crate::error::HttpClientError;
 
 use phf::phf_set;
 
@@ -292,6 +297,44 @@ pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Resu
         Some(index) => Ok(index as u32),
         None => Err(MpvError::OsVideoNotFound(selected_video_path)),
     }
+}
+
+#[command]
+pub async fn download_mpv_binary(handle: AppHandle) -> Result<String, HttpClientError> {
+    let platform = env::consts::OS;
+    let url = match platform {
+        "macos" => "https://github.com/aramrw/mpv_shelf_v2/releases/download/v0.0.1/mpv-aarch64-apple-darwin",
+        "windows" => "https://github.com/aramrw/mpv_shelf_v2/releases/download/v0.0.1/mpv-x86_64-pc-windows-msvc.exe",
+        _ => return Ok("unsupported platform".to_string()),
+    };
+
+    let client = Client::new();
+    let response = client.get(url).send().await?; // Handle errors
+    let total_size = response.content_length().unwrap_or(0);
+
+    let mut downloaded: u64 = 0;
+    let mut stream = response.bytes_stream();
+
+    let app_data_dir = handle.path().app_data_dir()?;
+    let mpv_file_name = match platform {
+        "macos" => "mpv",
+        "windows" => "mpv.exe",
+        _ => "mpv",
+    };
+    let mpv_file_path = app_data_dir.join(mpv_file_name);
+
+    let mut file = tokio::fs::File::create(&mpv_file_path).await?;
+
+    while let Some(chunk) = stream.try_next().await? {
+        downloaded += chunk.len() as u64;
+
+        file.write_all(&chunk).await?;
+
+        let percentage = (downloaded as f64 / total_size as f64) * 100.0;
+        handle.emit("progress", percentage as u64)?; 
+    }
+
+    Ok(mpv_file_path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
