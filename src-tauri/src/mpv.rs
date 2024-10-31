@@ -91,7 +91,7 @@ pub async fn play_video(
     match extract_mpv_stdout_path(output.stdout.clone()) {
         Some(path) => {
             let last_watched_video_path = normalize_path(&path);
-            println!("{:?}", last_watched_video_path);
+            //println!("{:?}", last_watched_video_path);
             match main_folder
                 .os_videos
                 .iter()
