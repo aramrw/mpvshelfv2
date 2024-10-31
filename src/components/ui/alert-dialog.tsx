@@ -88,7 +88,7 @@ export const AlertDialogTitle = <T extends ValidComponent = "h2">(
 
 	return (
 		<AlertDialogPrimitive.Title
-			class={cn("text-lg font-semibold", local.class)}
+			class={cn("pointer-events-none select-none text-lg font-semibold", local.class)}
 			{...rest}
 		/>
 	);
@@ -108,7 +108,7 @@ export const AlertDialogDescription = <T extends ValidComponent = "p">(
 
 	return (
 		<AlertDialogPrimitive.Description
-			class={cn("text-sm text-muted-foreground", local.class)}
+			class={cn("pointer-events-none select-none text-sm font-medium text-muted-foreground", local.class)}
 			{...rest}
 		/>
 	);
