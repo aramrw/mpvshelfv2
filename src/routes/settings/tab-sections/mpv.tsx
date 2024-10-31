@@ -181,13 +181,11 @@ function FilePickerTextField({
 function DownloadMpvAlertDialog({
   user,
   platform,
-	appDataDir,
   downloadPercent,
   setDownloadPercent,
 }: {
   user: UserType
   platform: Platform;
-	appDataDir: string,
   downloadPercent: Accessor<number>;
   setDownloadPercent: Setter<number>;
 }) {
