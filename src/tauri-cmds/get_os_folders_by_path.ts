@@ -6,7 +6,7 @@ export default async function get_os_folders_by_path(parentPath: string) {
     const osFolders: OsFolder[] = await invoke("get_os_folders_by_path", { parentPath });
     return osFolders;
   } catch (error) {
-    console.error("get_os_folders_by_path:", error);
+    //console.error("get_os_folders_by_path:", error);
     return null;
   }
 }
