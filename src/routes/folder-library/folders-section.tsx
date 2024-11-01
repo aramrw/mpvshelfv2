@@ -3,7 +3,7 @@ import { OsFolder, OsVideo, UserType } from "../../models";
 import play_video from "../../tauri-cmds/mpv/play_video";
 import ErrorAlert from "../../main-components/error-alert";
 import LibraryFolderCard from "./folder-card";
-import { useLocation, useNavigate } from "@solidjs/router";
+import { A, useLocation, useNavigate } from "@solidjs/router";
 
 export default function LibraryFoldersSection({
   user,
@@ -37,6 +37,9 @@ export default function LibraryFoldersSection({
                 mainParentFolder={mainParentFolder}
                 onClick={() => {
                   navigate(`/library/${encodeURIComponent(folder.path)}`)
+                  setTimeout(() => {
+                  window.location.reload();
+                  }, 1)
                 }}
               />
             )}
