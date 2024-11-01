@@ -15,7 +15,7 @@ import get_os_folders_by_path from "../../tauri-cmds/get_os_folders_by_path";
 
 export default function Library() {
   const params = useParams();
-  const folderPath = decodeURIComponent(params.folder).replace(/\)$/, ""); // Remove trailing )
+  const folderPath = () => decodeURIComponent(params.folder).replace(/\)$/, "");
 
   const [mainParentFolder] = createResource(folderPath, get_os_folder_by_path);
 
@@ -52,8 +52,8 @@ export default function Library() {
         >
           <Show when={mainParentFolder() && user()}>
             <LibraryHeader
-              mainParentFolder={mainParentFolder.latest!}
-              user={user.latest!} />
+              mainParentFolder={mainParentFolder()!}
+              user={user()} />
             <TabsList class="w-full h-9 border">
               <Show when={osVideos()}>
                 <TabsTrigger
@@ -76,17 +76,17 @@ export default function Library() {
               <TabsIndicator />
             </TabsList>
             <Show when={osVideos()}>
-            <TabsContent value="videos">
-              <LibraryVideosSection
-                mainParentFolder={mainParentFolder()!}
-                osVideos={osVideos()!}
-                user={user()!} />
-            </TabsContent>
-						</Show>
+              <TabsContent value="videos">
+                <LibraryVideosSection
+                  mainParentFolder={mainParentFolder()!}
+                  osVideos={osVideos()!}
+                  user={user()!} />
+              </TabsContent>
+            </Show>
             <Show when={childFolders()}>
               <TabsContent value="folders">
                 <LibraryFoldersSection
-                  user={user.latest!}
+                  user={user()}
                   mainParentFolder={mainParentFolder()!}
                   childFolders={childFolders()!}
                 />
