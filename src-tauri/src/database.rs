@@ -4,9 +4,7 @@ use data::v1::{OsFolder, OsFolderKey, OsVideo, OsVideoKey, User};
 use native_db::*;
 use tauri::{command, AppHandle, Manager};
 
-use crate::{
-    error::DatabaseError, fs::check_cover_img_exists, misc::get_date_time, mpv::EPISODE_TITLE_REGEX,
-};
+use crate::{error::DatabaseError, misc::get_date_time, mpv::EPISODE_TITLE_REGEX};
 
 pub mod data {
     use native_db::{native_db, ToKey};
@@ -36,8 +34,10 @@ pub mod data {
             #[primary_key]
             pub path: String,
             pub title: String,
+            #[secondary_key]
+            pub parent_path: Option<String>,
             pub os_videos: Vec<OsVideo>,
-            pub last_watched_video: OsVideo,
+            pub last_watched_video: Option<OsVideo>,
             pub cover_img_path: Option<String>,
             pub update_date: String,
             pub update_time: String,
@@ -105,11 +105,15 @@ pub fn get_os_folders(handle: AppHandle, user_id: String) -> Result<Vec<OsFolder
     let db = Builder::new().create(&DBMODELS, db_path)?;
 
     let rtx = db.r_transaction()?;
-    let folders: Vec<OsFolder> = rtx
+    let mut folders: Vec<OsFolder> = rtx
         .scan()
         .secondary(OsFolderKey::user_id)?
         .start_with(user_id.as_str())?
         .try_collect()?;
+
+    folders.retain(|folder| folder.parent_path.is_none());
+
+    println!("folders = {:#?}", folders);
 
     if folders.is_empty() {
         return Err(DatabaseError::OsFoldersNotFound(format!(
@@ -138,6 +142,30 @@ pub fn get_os_folder_by_path(
     Err(DatabaseError::OsFoldersNotFound(format!(
         "OsFolder found not found from path: {folder_path}",
     )))
+}
+
+#[command]
+pub fn get_os_folders_by_path(
+    handle: AppHandle,
+    parent_path: String,
+) -> Result<Vec<OsFolder>, DatabaseError> {
+    let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
+    let db = Builder::new().create(&DBMODELS, db_path)?;
+
+    let rtx = db.r_transaction()?;
+    let folders: Vec<OsFolder> = rtx
+        .scan()
+        .secondary(OsFolderKey::parent_path)?
+        .start_with(Some(parent_path.as_str()))?
+        .try_collect()?;
+
+    if folders.is_empty() {
+        return Err(DatabaseError::OsFoldersNotFound(format!(
+            "0 child folders found in dir: {parent_path}",
+        )));
+    }
+
+    Ok(folders)
 }
 
 #[command]
@@ -208,6 +236,10 @@ pub fn get_os_videos(
         .scan()
         .secondary(OsVideoKey::main_folder_path)?
         .start_with(main_folder_path.as_str())?
+        .take_while(|e: &Result<OsVideo, db_type::Error>| match e {
+            Ok(vid) => vid.main_folder_path == main_folder_path,
+            Err(_) => false,
+        })
         .try_collect()?;
 
     if folders.is_empty() {
@@ -222,7 +254,7 @@ pub fn get_os_videos(
             .captures(&a.title)
             .and_then(|caps| caps.get(1)) // Assuming the first capturing group contains the episode number
             .and_then(|m| m.as_str().parse::<u32>().ok())
-            .unwrap_or(0); 
+            .unwrap_or(0);
 
         let num_b = EPISODE_TITLE_REGEX
             .captures(&b.title)
@@ -230,7 +262,7 @@ pub fn get_os_videos(
             .and_then(|m| m.as_str().parse::<u32>().ok())
             .unwrap_or(0);
 
-        num_a.cmp(&num_b) 
+        num_a.cmp(&num_b)
     });
 
     //println!("{:#?}", folders);
