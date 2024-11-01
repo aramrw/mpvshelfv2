@@ -113,7 +113,7 @@ pub fn get_os_folders(handle: AppHandle, user_id: String) -> Result<Vec<OsFolder
 
     folders.retain(|folder| folder.parent_path.is_none());
 
-    println!("folders = {:#?}", folders);
+    //println!("folders = {:#?}", folders);
 
     if folders.is_empty() {
         return Err(DatabaseError::OsFoldersNotFound(format!(
