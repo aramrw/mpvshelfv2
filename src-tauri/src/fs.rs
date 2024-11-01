@@ -1,9 +1,10 @@
 use std::path::{Path, PathBuf};
 //use std::time::Instant;
 use futures_util::{StreamExt, TryStreamExt};
-use tokio::io::AsyncWriteExt;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{env, fs, io};
 use std::{fs::read_dir, process::Command};
+use tokio::io::AsyncWriteExt;
 
 use crate::database::data::v1::OsVideo;
 use crate::database::update_os_videos;
@@ -38,22 +39,12 @@ pub static SUPPORTED_SUBTITLE_FORMATS: phf::Set<&'static str> = phf_set! {
     "srt", "ass", "ssa", "sub", "idx", "vtt", "lrc",
 };
 
-#[command]
-pub fn read_os_folder_dir(
-    handle: AppHandle,
-    path: String,
-    user_id: String,
-    cover_img_path: Option<String>,
-    update_datetime: Option<(String, String)>,
-) -> Result<OsFolder, DatabaseError> {
-    let mut child_folder_paths: Vec<String> = Vec::new();
-    let mut video_file_paths: Vec<String> = Vec::new();
-    let mut audio_file_paths: Vec<String> = Vec::new();
-    let mut cover_img_path: Option<String> = cover_img_path;
-    let mut update_datetime = update_datetime;
-    let app_data_dir = handle.path().app_data_dir()?;
-
-    for entry in read_dir(&path)? {
+fn read_dir_helper(
+    path: &str,
+    child_folder_paths: &mut Vec<String>,
+    video_file_paths: &mut Vec<String>,
+) -> Result<(), io::Error> {
+    for entry in read_dir(path)? {
         let entry = entry?;
         let entry_path = entry.path();
 
@@ -62,7 +53,7 @@ pub fn read_os_folder_dir(
             if SUPPORTED_VIDEO_FORMATS.get_key(&extension_lossy).is_some() {
                 video_file_paths.push(entry_path.to_string_lossy().to_string());
             } else if SUPPORTED_AUDIO_FORMATS.get_key(&extension_lossy).is_some() {
-                audio_file_paths.push(entry_path.to_string_lossy().to_string());
+                video_file_paths.push(entry_path.to_string_lossy().to_string());
             }
         } else if entry_path.is_dir() {
             child_folder_paths.push(entry_path.to_string_lossy().to_string());
@@ -70,7 +61,31 @@ pub fn read_os_folder_dir(
         }
     }
 
-    if child_folder_paths.is_empty() && video_file_paths.is_empty() && audio_file_paths.is_empty() {
+    Ok(())
+}
+
+#[command]
+pub fn read_os_folder_dir(
+    handle: AppHandle,
+    path: String,
+    user_id: String,
+    cover_img_path: Option<String>,
+    update_datetime: Option<(String, String)>,
+    parent_path: Option<String>,
+) -> Result<OsFolder, DatabaseError> {
+    let mut child_folder_paths: Vec<String> = Vec::new();
+    let mut video_file_paths: Vec<String> = Vec::new();
+    let mut cover_img_path: Option<String> = cover_img_path;
+    let mut update_datetime = update_datetime;
+    let app_data_dir = handle.path().app_data_dir()?;
+
+    read_dir_helper(
+        &path,
+        &mut child_folder_paths,
+        &mut video_file_paths,
+    )?;
+
+    if child_folder_paths.is_empty() && video_file_paths.is_empty() {
         return Err(DatabaseError::IoError(io::Error::new(
             io::ErrorKind::NotFound,
             format!("{path} contains 0 supported files."),
@@ -98,7 +113,7 @@ pub fn read_os_folder_dir(
     }
 
     let update_date = update_datetime.clone().unwrap().0;
-    let update_time = update_datetime.unwrap().1;
+    let update_time = update_datetime.clone().unwrap().1;
 
     let os_videos: Vec<OsVideo> = video_file_paths
         .into_iter()
@@ -115,19 +130,37 @@ pub fn read_os_folder_dir(
         })
         .try_collect()?;
 
+    let mut child_folders: Vec<OsFolder> = child_folder_paths
+        .into_par_iter()
+        .filter_map(|folder_path| {
+            read_os_folder_dir(
+                handle.clone(),
+                folder_path,
+                user_id.clone(),
+                cover_img_path.clone(),
+                update_datetime.clone(),
+                Some(path.clone()),
+            )
+            .ok()
+        })
+        .collect();
+
     let folder = OsFolder {
         user_id,
         path,
         title: os_folder.file_name().unwrap().to_string_lossy().to_string(),
+        parent_path,
         os_videos: os_videos.clone(),
-        last_watched_video: os_videos[0].clone(),
+        last_watched_video: os_videos.first().cloned(),
         cover_img_path,
         update_date,
         update_time,
     };
 
+    child_folders.push(folder.clone());
+
     update_os_videos(&handle, os_videos, None)?;
-    update_os_folders(handle, vec![folder.clone()])?;
+    update_os_folders(handle, child_folders)?;
 
     Ok(folder)
 }
@@ -331,7 +364,7 @@ pub async fn download_mpv_binary(handle: AppHandle) -> Result<String, HttpClient
         file.write_all(&chunk).await?;
 
         let percentage = (downloaded as f64 / total_size as f64) * 100.0;
-        handle.emit("progress", percentage as u64)?; 
+        handle.emit("progress", percentage as u64)?;
     }
 
     Ok(mpv_file_path.to_string_lossy().to_string())
