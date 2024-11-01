@@ -14,14 +14,17 @@ import { delete_os_folders } from "../../tauri-cmds/os_folders";
 import { IconBackspace, IconFolderSearch } from "@tabler/icons-solidjs";
 
 
-export default function FolderCardContextMenuContent(
-  { folder, user, setOsFolders, currentPlatform }:
-    {
-      folder: OsFolder,
-      user: Accessor<UserType | null>,
-      setOsFolders: Setter<OsFolder[]>,
-      currentPlatform: Platform
-    }) {
+export default function FolderCardContextMenuContent({
+  folder,
+  user,
+  setOsFolders,
+  currentPlatform
+}: {
+  folder: OsFolder,
+  user: Accessor<UserType | null>,
+  setOsFolders: Setter<OsFolder[]>,
+  currentPlatform: Platform
+}) {
   return (
     <ContextMenuContent>
       <ContextMenuItem onClick={() => show_in_folder(folder.path)}>
