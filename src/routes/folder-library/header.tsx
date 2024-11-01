@@ -46,9 +46,8 @@ export default function ({ mainParentFolder, user }: { mainParentFolder: OsFolde
               border-transparent border-2 shadow-md"
           />
           <svg
-            class="text-secondary fill-accent hover:text-muted bg-primary/50 rounded-sm 
-						hover:fill-secondary/60 hover:bg-secondary/20 transition-all
-              cursor-pointer h-auto w-1/4 p-1 mix-blend-plus-lighter absolute z-50 shadow-md shadow-primary/20"
+            class="text-secondary fill-secondary bg-primary/50 rounded-sm hover:opacity-50 transition-all
+              cursor-pointer h-auto w-1/4 p-1 mix-blend-multiply absolute z-50 shadow-md shadow-primary/20"
             style={{
               top: '50%',
               left: '50%',
