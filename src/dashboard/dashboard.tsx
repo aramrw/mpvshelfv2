@@ -12,26 +12,18 @@ import { Skeleton } from "../components/ui/skeleton";
 
 export default function Dashboard() {
   const [user, setUser] = createSignal<UserType | null>(null);
-  const [osFolders, setOsFolders] = createSignal<OsFolder[]>([]);
-  const [error, setError] = createSignal<string | null>(null);
-  const navigate = useNavigate();
-
-  onMount(async () => {
+  const [osFolders, { refetch }] = createResource<OsFolder[]>(async () => {
     const user = await get_default_user();
     if (user) {
       setUser(user);
-      get_os_folders(user.id).then((folders) => {
-        if (folders) {
-          console.log(folders)
-          setOsFolders(folders);
-        } else {
-          console.log("no folders")
-        }
-      })
+      const folders = await get_os_folders(user.id);
+      return folders || []; // Always return an array, even if empty
     }
-    let error = await mpv_system_check();
-    setError(error);
+    return []; // Return an empty array if no user is found
   });
+
+  const [error] = createResource(() => mpv_system_check());
+  const navigate = useNavigate();
 
   return (
     <main>
@@ -41,17 +33,22 @@ export default function Dashboard() {
       </Show>
       <section class="h-fit py-4 px-3 md:px-16 lg:px-36 xl:px-44 flex flex-row gap-2">
         <div class="grid grid-cols-4 gap-2 min-h-[calc(4*cardHeight)]">
-          <Show when={user() && osFolders() && osFolders()?.length > 0} fallback={
-            <Skeleton class="h-32 w-24 sm:h-44 sm:w-32 md:h-48 md:w-36 lg:h-52 lg:w-40" />
-          }>
+          <Show
+            when={user() && osFolders.state === "ready" && osFolders()!.length > 0}
+            fallback={
+              osFolders.state === "pending" && (
+                <Skeleton class="h-32 w-24 sm:h-44 sm:w-32 md:h-48 md:w-36 lg:h-52 lg:w-40" />
+              )
+						}
+          >
             <For each={osFolders()}>
               {(folder) => (
-                <OsFolderCard folder={folder} user={user} setOsFolders={setOsFolders} />
+                <OsFolderCard folder={folder} user={user} refetch={refetch} />
               )}
             </For>
           </Show>
           <Show when={user()}>
-            <AddNewSkeleton user={user} setOsFolders={setOsFolders} />
+            <AddNewSkeleton user={user} refetch={refetch} />
           </Show>
         </div>
       </section>
