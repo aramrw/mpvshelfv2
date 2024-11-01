@@ -10,9 +10,15 @@ import FolderCardContextMenuContent from "./folder-card-cm-context";
 import { useNavigate } from "@solidjs/router";
 import { Transition } from "solid-transition-group";
 
-const OsFolderCard = (
-  { folder, user, setOsFolders }:
-    { folder: OsFolder, user: Accessor<UserType | null>, setOsFolders: Setter<OsFolder[]> }
+const OsFolderCard = ({
+  folder,
+  user,
+  setOsFolders
+}: {
+  folder: OsFolder,
+  user: Accessor<UserType | null>,
+  setOsFolders: Setter<OsFolder[]>
+}
 ) => {
   const currentPlatform = platform();
   const navigate = useNavigate();
