@@ -7,10 +7,11 @@ import { Accessor, Setter } from "solid-js";
 import { Transition } from "solid-transition-group";
 
 const AddNewSkeleton = ({
-  user, setOsFolders
+  user,
+  refetch,
 }: {
   user: Accessor<UserType | null>,
-  setOsFolders: Setter<OsFolder[]>
+  refetch: (info?: unknown) => OsFolder[] | Promise<OsFolder[] | undefined> | null | undefined;
 }
 ) => {
   return (
@@ -43,9 +44,8 @@ const AddNewSkeleton = ({
               onClick={() => {
                 open({ directory: true }).then((dir_path) => {
                   if (dir_path) {
-                    read_os_folder_dir(dir_path, user()!.id).then((newOsFolder: unknown) => {
-                      console.log(newOsFolder);
-                      setOsFolders((prev) => [...(prev ?? []), newOsFolder as OsFolder]);
+                    read_os_folder_dir(dir_path, user()!.id).then(() => {
+                      refetch();
                     });
                   }
                 });
