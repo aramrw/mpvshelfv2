@@ -1,5 +1,13 @@
 use chrono::Local;
+use futures_util::{StreamExt, TryStreamExt};
+use reqwest::Client;
+use std::io::Write;
 use std::mem::take;
+use std::{env, fs::File};
+use tauri::{command, AppHandle, Emitter, Manager, Window};
+use tauri_plugin_os::platform;
+
+use crate::error::HttpClientError;
 
 pub fn get_date_time() -> (String, String) {
     let local_t = Local::now();
@@ -28,3 +36,5 @@ pub fn get_date_time() -> (String, String) {
 
     (String::new(), String::new())
 }
+
+

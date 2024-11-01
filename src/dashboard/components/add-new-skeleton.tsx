@@ -6,12 +6,13 @@ import { OsFolder, UserType } from "../../models";
 import { Accessor, Setter } from "solid-js";
 import { Transition } from "solid-transition-group";
 
-const AddNewSkeleton = (
-  { user, setOsFolders }:
-    {
-      user: Accessor<UserType | null>,
-      setOsFolders: Setter<OsFolder[]>
-    }
+const AddNewSkeleton = ({
+  user,
+  refetch,
+}: {
+  user: Accessor<UserType | null>,
+  refetch: (info?: unknown) => OsFolder[] | Promise<OsFolder[] | undefined> | null | undefined;
+}
 ) => {
   return (
     <Transition
@@ -33,24 +34,21 @@ const AddNewSkeleton = (
       <Popover placement="right-start">
         <PopoverTrigger class="h-fit">
           <div class="w-fit relative flex items-center justify-center hover:opacity-50 transition-opacity cursor-pointer duration-100 ease-in-out">
-  <div class="h-32 w-24 sm:h-44 sm:w-32 md:h-48 md:w-36 lg:h-52 lg:w-40 rounded-sm shadow-md bg-white" />
-  <IconPlus class="w-9 h-9 sm:h-11 sm:w-11 md:h-14 md:w-14 lg:h-16 lg:w-16 absolute text-zinc-300 fill-red-500 stroke-[1.8] top-0 bottom-0 left-0 right-0 m-auto" />
-</div>
+            <div class="h-32 w-24 sm:h-44 sm:w-32 md:h-48 md:w-36 lg:h-52 lg:w-40 rounded-sm shadow-md bg-white" />
+            <IconPlus class="w-9 h-9 sm:h-11 sm:w-11 md:h-14 md:w-14 lg:h-16 lg:w-16 absolute text-zinc-300 fill-red-500 stroke-[1.8] top-0 bottom-0 left-0 right-0 m-auto" />
+          </div>
         </PopoverTrigger>
         <PopoverContent class="p-0 bg-transparent border-none shadow-none text-sm flex flex-col justify-center items-center font-medium">
           <ul class="w-fit h-full flex flex-col gap-1">
             <li class="bg-white p-1 rounded-sm shadow-md flex flex-row justify-center items-center w-fit gap-0.5 hover:opacity-50 transition-opacity duration-100 ease-in-out cursor-pointer"
               onClick={() => {
-                if (user()) {
-                  open({ directory: true }).then((dir_path) => {
-                    if (dir_path) {
-                      read_os_folder_dir(dir_path, user()!.id).then((newOsFolder: unknown) => {
-                        console.log(newOsFolder);
-                        setOsFolders((prev) => [...(prev ?? []), newOsFolder as OsFolder]);
-                      });
-                    }
-                  });
-                }
+                open({ directory: true }).then((dir_path) => {
+                  if (dir_path) {
+                    read_os_folder_dir(dir_path, user()!.id).then(() => {
+                      refetch();
+                    });
+                  }
+                });
               }}
             >
               <IconFolderPlus class="w-6 h-6 sm:h-8 sm:w-8 md:h-9 md:w-9 lg:w-10 lg:h-10 text-primary fill-zinc-500 stroke-[2.2]" />

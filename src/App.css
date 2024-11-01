@@ -75,16 +75,15 @@
     }
 }
 
-.slide-fade-enter-active {
-	transition: opacity 0.5s;
-}
+.slide-fade-enter-active,
 .slide-fade-exit-active {
-  transition: opacity 0.1s, transform 0.3s;
+  transition: opacity 0.3s, transform 0.3s;
 }
 .slide-fade-enter,
 .slide-fade-exit-to {
+  transform: translateX(10px);
   opacity: 0;
 }
 .slide-fade-enter {
-  opacity: 1;
+  transform: translateX(-10px);
 }

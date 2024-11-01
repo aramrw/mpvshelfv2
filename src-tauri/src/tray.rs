@@ -61,6 +61,7 @@ pub fn build_window(handle: AppHandle, url: Option<&str>) -> Result<WebviewWindo
 
     let window =
         tauri::WebviewWindowBuilder::new(&handle, "main", tauri::WebviewUrl::App(url.into()))
+            .title("mpvshelf")
             .inner_size(800.0, 600.0)
             .center()
             .visible(true)

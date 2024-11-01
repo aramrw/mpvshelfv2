@@ -43,6 +43,22 @@ pub enum MpvError {
     Utf8Error(#[from] FromUtf8Error),
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum HttpClientError {
+    #[error("{0}")]
+    RequestError(#[from] reqwest::Error),
+    #[error("{0:#?}")]
+    TuariError(#[from] tauri::Error),
+    #[error("{0:#?}")]
+    IoError(#[from] io::Error),
+}
+
+impl From<HttpClientError> for InvokeError {
+    fn from(error: HttpClientError) -> Self {
+        InvokeError::from_error(error)
+    }
+}
+
 impl From<PathBuf> for MpvError {
     fn from(path: PathBuf) -> Self {
         MpvError::OsVideoNotFound(path.to_string_lossy().to_string())

@@ -1,4 +1,4 @@
-import { createSignal, onMount } from "solid-js";
+import { createResource, createSignal, onMount, Show } from "solid-js";
 // import {
 //   Card,
 //   CardContent,
@@ -28,7 +28,6 @@ import IconMpv from "../../main-components/icons/icon-mpv";
 import ProfileTabSection from "./tab-sections/profile";
 import SettingsErrorCard from "./tab-sections/error-card";
 import NavBar from "../../main-components/navbar";
-import { Transition } from "solid-transition-group";
 
 const handleSettingParams = (params: Params): string[] | string => {
   // example param: mpv_ERROR_Error: This is a test Error.
@@ -50,12 +49,8 @@ export default function Settings() {
   const errorMessage = typeof params === "string" ? null : params[1];
 
   const [selectedTab, setSelectedTab] = createSignal<string>(typeof params === "string" ? params : params[0]);
-  const [user, setUser] = createSignal<UserType>();
+  const [user] = createResource<UserType | null>(get_default_user);
 
-  onMount(async () => {
-    const user = await get_default_user();
-    setUser(user!);
-  });
 
   return (
     <>
@@ -82,13 +77,15 @@ export default function Settings() {
               <IconUserFilled class="w-3 h-auto p-0" />
             </TabsTrigger>
             <TabsTrigger value="mpv">
-              Mpv
+              mpv
               <IconMpv class="ml-0.5 w-3 stroke-[2.4px]" />
             </TabsTrigger>
             <TabsIndicator />
           </TabsList>
-          <ProfileTabSection user={user()} />
-          <MpvTabSection user={user()} />
+          <Show when={user.latest}>
+            <ProfileTabSection user={user.latest!} />
+            <MpvTabSection user={user.latest!} />
+          </Show>
         </Tabs>
       </main>
     </>

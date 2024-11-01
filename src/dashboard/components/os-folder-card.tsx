@@ -10,9 +10,15 @@ import FolderCardContextMenuContent from "./folder-card-cm-context";
 import { useNavigate } from "@solidjs/router";
 import { Transition } from "solid-transition-group";
 
-const OsFolderCard = (
-  { folder, user, setOsFolders }:
-    { folder: OsFolder, user: Accessor<UserType | null>, setOsFolders: Setter<OsFolder[]> }
+const OsFolderCard = ({
+  folder,
+  user,
+  refetch
+}: {
+  folder: OsFolder,
+  user: Accessor<UserType | null>,
+  refetch: (info?: unknown) => OsFolder[] | Promise<OsFolder[] | undefined> | null | undefined
+}
 ) => {
   const currentPlatform = platform();
   const navigate = useNavigate();
@@ -37,8 +43,11 @@ const OsFolderCard = (
         <ContextMenuTrigger>
           <div class=" w-fit 
 					flex items-center 
-					hover:translate-y-[-1.5px] hover:opacity-80 transition-all cursor-pointer duration-200 ease-in-out">
-            <div class="h-32 w-24 sm:h-44 sm:w-32 md:h-48 md:w-36 lg:h-52 lg:w-40 rounded-sm shadow-md bg-white flex items-center justify-center overflow-hidden relative will-change-transform"
+					hover:translate-y-[-1.5px] hover:opacity-80 transition-all 
+						cursor-pointer duration-200 ease-in-out select-none">
+            <div class="h-32 w-24 sm:h-44 sm:w-32 md:h-48 md:w-36 lg:h-52 lg:w-40 
+							rounded-sm shadow-md bg-white 
+							flex items-center justify-center overflow-hidden relative will-change-transform "
               onClick={() => navigate(`/library/${encodeURIComponent(folder.path)}`)}
             >
               <div class="folder-card-container absolute inset-0">
@@ -77,7 +86,7 @@ const OsFolderCard = (
         <FolderCardContextMenuContent
           user={user}
           folder={folder}
-          setOsFolders={setOsFolders}
+          refetch={refetch}
           currentPlatform={currentPlatform}
         />
       </ContextMenu>

@@ -17,8 +17,7 @@ import {
   TextFieldRoot,
 } from "../../../components/ui/textfield";
 import { IconUserFilled } from "@tabler/icons-solidjs";
-import { UserType } from "src/models";
-import { Transition } from "solid-transition-group";
+import { UserType } from "../../../models";
 
 export default function ProfileTabSection({ user }: { user: UserType | undefined }) {
   return (

@@ -14,14 +14,17 @@ import { delete_os_folders } from "../../tauri-cmds/os_folders";
 import { IconBackspace, IconFolderSearch } from "@tabler/icons-solidjs";
 
 
-export default function FolderCardContextMenuContent(
-  { folder, user, setOsFolders, currentPlatform }:
-    {
-      folder: OsFolder,
-      user: Accessor<UserType | null>,
-      setOsFolders: Setter<OsFolder[]>,
-      currentPlatform: Platform
-    }) {
+export default function FolderCardContextMenuContent({
+  folder,
+  user,
+  refetch,
+  currentPlatform
+}: {
+  folder: OsFolder;
+  user: Accessor<UserType | null>;
+  refetch: (info?: unknown) => OsFolder[] | Promise<OsFolder[] | undefined> | null | undefined;
+  currentPlatform: Platform;
+}) {
   return (
     <ContextMenuContent>
       <ContextMenuItem onClick={() => show_in_folder(folder.path)}>
@@ -46,20 +49,7 @@ export default function FolderCardContextMenuContent(
           <ContextMenuItem class="flex flex-row items-center gap-0.5"
             onClick={() => {
               delete_os_folders([folder], user()!.id).then(() => {
-                setOsFolders((prev) => {
-                  const newOsFolders = [];
-
-                  // Use a raw for loop to build the new array
-                  if (prev) {
-                    for (let i = 0; i < prev.length; i++) {
-                      if (prev[i] !== folder) {
-                        newOsFolders.push(prev[i]);
-                      }
-                    }
-                  }
-
-                  return newOsFolders;
-                });
+                refetch();
               });
             }}
           >
