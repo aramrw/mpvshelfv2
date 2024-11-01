@@ -99,7 +99,7 @@ pub async fn play_video(
             {
                 Some(last_watched_os_video) => {
                     let mut main_folder_clone = main_folder.clone();
-                    main_folder_clone.last_watched_video = last_watched_os_video.clone();
+                    main_folder_clone.last_watched_video = Some(last_watched_os_video.clone());
 
                     update_os_videos(&handle, vec![last_watched_os_video.clone()], Some(true))?;
                     update_os_folders(handle.clone(), vec![main_folder_clone])?;
