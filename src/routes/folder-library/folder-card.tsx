@@ -6,9 +6,7 @@ import {
   ContextMenuTrigger,
 } from "../../components/ui/context-menu";
 import { Transition } from "solid-transition-group";
-import { cn } from "../../libs/cn";
-import { IconEye, IconReload } from "@tabler/icons-solidjs";
-import IconHeroEye from "../../main-components/icons/icon-hero-eye";
+import { IconFolderFilled } from "@tabler/icons-solidjs";
 
 const LibraryFolderCard = ({
   index,
@@ -36,11 +34,13 @@ const LibraryFolderCard = ({
     >
       <ContextMenu>
         <ContextMenuTrigger>
-          <div class="h-auto max-w-[450px] min-h-30 cursor-pointer relative w-full border-[1.5px] 
+          <div class="h-auto max-h-[120px] max-w-[450px] min-h-30 cursor-pointer relative w-full border-[1.5px] 
 						border-transparent rounded-none shadow-black/30 shadow-md flex items-center 
 						justify-center overflow-hidden will-change-transform transition-all group"
             onClick={onClick}
           >
+
+            <div class="w-7 h-7 bg-secondary absolute left-0 top-0 z-20 rounded-br-sm" />
             {/* Folder Image */}
             <div class="folder-card-container inset-0"
             >
