@@ -10,7 +10,7 @@ import { A, useNavigate } from "@solidjs/router";
 export default function NavBar() {
 
 	const navigate = useNavigate();
-
+	
   return (
     <nav class="sm:px-2 md:px-16 lg:px-36 xl:px-44 w-full h-8 bg-primary shadow-md z-[100]">
       <ul class="h-full w-full flex flex-row items-center justify-between">
