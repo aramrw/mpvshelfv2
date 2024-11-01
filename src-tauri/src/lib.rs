@@ -11,7 +11,7 @@ mod mpv;
 mod tray;
 
 use crate::database::{
-    delete_os_folders, get_default_user, get_os_folder_by_path, get_os_folders, get_os_videos,
+    delete_os_folders, get_default_user, get_os_folders_by_path, get_os_folder_by_path, get_os_folders, get_os_videos,
     get_user_by_id, update_os_folders, update_user,
 };
 use crate::fs::{check_cover_img_exists, read_os_folder_dir, show_in_folder, download_mpv_binary};
@@ -37,6 +37,7 @@ pub fn run() {
             update_user,
             get_os_folders,
             get_os_folder_by_path,
+            get_os_folders_by_path,
             update_os_folders,
             delete_os_folders,
             get_os_videos,
