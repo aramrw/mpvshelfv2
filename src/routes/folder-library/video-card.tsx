@@ -92,12 +92,12 @@ const LibraryVideoCard = ({
             <Show when={!video.watched}
               fallback={
                 <IconReload
-                  class=" h-auto w-[20%] mix-blend-difference opacity-60 p-1 text-secondary bg-primary/70 absolute
+                  class=" h-auto w-[20%] mix-blend-multiply opacity-80 p-1 text-secondary bg-primary/70 absolute
 									left-0 bottom-0 z-10 m-auto inset-0 rounded-md scale-x-[-1] shadow-md shadow-primary/20 group-hover:opacity-0 
 									transition-opacity duration-300" />
               }>
               <svg
-                class="h-auto w-[20%] p-1 mix-blend-difference opacity-60 absolute fill-secondary 
+                class="h-auto w-[20%] p-1 mix-blend-multiply opacity-80 absolute fill-secondary 
 							left-0 z-10 m-auto inset-0 bg-primary/70 rounded-md 
 								shadow-md shadow-primary/20 group-hover:opacity-0 transition-opacity 
 								duration-300"
