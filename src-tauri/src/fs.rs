@@ -288,18 +288,6 @@ pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Resu
         false
     });
 
-    // media_files.sort_by(|a, b| {
-    //     let nums_a: Vec<u32> = EPISODE_TITLE_REGEX
-    //         .find_iter(&a.file_name().to_string_lossy())
-    //         .filter_map(|m| m.as_str().parse::<u32>().ok())
-    //         .collect();
-    //     let nums_b: Vec<u32> = EPISODE_TITLE_REGEX
-    //         .find_iter(&b.file_name().to_string_lossy())
-    //         .filter_map(|m| m.as_str().parse::<u32>().ok())
-    //         .collect();
-    //     nums_a.cmp(&nums_b)
-    // });
-
     media_files.sort_by(|a, b| {
         // Extract the episode number from the title using regex
         let num_a = EPISODE_TITLE_REGEX
