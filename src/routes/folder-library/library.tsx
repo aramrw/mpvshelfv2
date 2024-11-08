@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "../../c
 import { IconDeviceTvFilled, IconFolderFilled } from "@tabler/icons-solidjs";
 import LibraryFoldersSection from "./folders-section";
 import get_os_folders_by_path from "../../tauri-cmds/get_os_folders_by_path";
+import { Button } from "../../components/ui/button";
 
 export default function Library() {
   const params = useParams();
@@ -24,7 +25,7 @@ export default function Library() {
     get_user_by_id
   );
 
-  const [osVideos] = createResource(
+  const [osVideos, { mutate }] = createResource(
     () => mainParentFolder() ? mainParentFolder()?.path : null,
     get_os_videos
   );
@@ -35,7 +36,7 @@ export default function Library() {
     <Transition
       appear={true}
       onEnter={(el, done) => {
-        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600 });
         a.finished.then(done);
       }}
       onExit={(el, done) => {
@@ -78,6 +79,7 @@ export default function Library() {
             <Show when={osVideos()}>
               <TabsContent value="videos">
                 <LibraryVideosSection
+                  mutate={mutate}
                   mainParentFolder={mainParentFolder()!}
                   osVideos={osVideos()!}
                   user={user()!} />
