@@ -1,19 +1,24 @@
-import { Accessor, createSignal, For, Show } from "solid-js";
+import { Accessor, createSignal, For, Setter, Show } from "solid-js";
 import { OsFolder, OsVideo, UserType } from "../../models";
 import LibraryVideoCard from "./video-card";
 import play_video from "../../tauri-cmds/mpv/play_video";
 import ErrorAlert from "../../main-components/error-alert";
+import { platform } from "@tauri-apps/plugin-os";
 
 export default function LibraryVideosSection({
   user,
-  mainParentFolder, osVideos
+  mainParentFolder,
+  osVideos,
+  mutate,
 }: {
-  user: UserType,
-  mainParentFolder: OsFolder,
-  osVideos: OsVideo[]
+  user: UserType;
+  mainParentFolder: OsFolder;
+  osVideos: OsVideo[];
+	mutate: Setter<OsVideo[] | null | undefined>;
 }
 ) {
 
+  const currentPlatform = platform();
   const [error, setError] = createSignal<string | null>();
 
   return (
@@ -33,6 +38,8 @@ export default function LibraryVideosSection({
                 index={index}
                 video={video}
                 mainParentFolder={mainParentFolder}
+                currentPlatform={currentPlatform}
+                mutate={mutate}
                 onClick={async () => {
                   const error = await play_video(mainParentFolder, video, user);
                   if (error) {
