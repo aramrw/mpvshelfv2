@@ -1,5 +1,5 @@
 import { OsFolder, OsVideo } from "../../models";
-import { Accessor, createEffect, Show } from "solid-js";
+import { Accessor, createEffect, Setter, Show } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   ContextMenu,
@@ -10,20 +10,40 @@ import { cn } from "../../libs/cn";
 import { IconEye, IconReload } from "@tabler/icons-solidjs";
 import { createScrollPosition } from "@solid-primitives/scroll";
 import IconHeroEye from "../../main-components/icons/icon-hero-eye";
+import VideoCardContextMenu from "./video-cm";
+import { Platform } from "@tauri-apps/plugin-os";
+
+function splitFileName(title: string): [string, string] | [string] {
+  const lastDotIndex = title.lastIndexOf(".");
+
+  if (lastDotIndex === -1) {
+    return [title];
+  }
+
+  const name = title.slice(0, lastDotIndex);
+  const extension = title.slice(lastDotIndex + 1);
+  return [name, extension];
+
+}
 
 const LibraryVideoCard = ({
   index,
   video,
   mainParentFolder,
+  currentPlatform,
+  mutate,
   onClick,
 }: {
   index: Accessor<number>
   video: OsVideo,
   mainParentFolder: OsFolder
+  currentPlatform: Platform,
+	mutate: Setter<OsVideo[] | null | undefined>;
   onClick: (event: MouseEvent) => void,
 }) => {
 
-  const splitTitle = video.title.split(".")[0];
+  const splitTitle = splitFileName(video.title);
+  const FILE_SRC_LWV_COVER_IMG_PATH = convertFileSrc(video?.cover_img_path ?? "");
 
   return (
     <Transition
@@ -39,11 +59,21 @@ const LibraryVideoCard = ({
     >
       <ContextMenu>
         <ContextMenuTrigger>
-          <div class="h-auto max-w-[450px] min-h-30 cursor-pointer relative w-full border-[1.5px] 
+          <div class="max-w-[450px] h-56 cursor-pointer relative w-full border-[1.5px] 
 						border-transparent rounded-none shadow-black/30 shadow-md flex items-center 
 						justify-center overflow-hidden will-change-transform transition-all group"
             onClick={onClick}
           >
+            <div
+              class="absolute inset-0 z-0"
+              style={{
+                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),url(${FILE_SRC_LWV_COVER_IMG_PATH})`,
+                "background-size": "cover",
+                "background-repeat": "no-repeat",
+                "background-position": "center",
+                filter: "blur(6px)",
+              }}
+            />
             {/* Folder Image */}
             <div class="folder-card-container inset-0"
             >
@@ -78,10 +108,10 @@ const LibraryVideoCard = ({
                         text-border text-xs p-1 mix-blend-plus-darker group-hover:opacity-0 transition-opacity duration-300">
               <h1 class="font-medium pointer-events-none select-none">
                 <Show when={video.watched}
-                  fallback={splitTitle}
+                  fallback={splitTitle[0]}
                 >
                   <div class="flex flex-row gap-1 text-muted/60">
-                    {splitTitle}
+                    {splitTitle[0]}
                     <IconHeroEye class="h-4 text-muted/80" />
                   </div>
                 </Show>
@@ -113,6 +143,12 @@ const LibraryVideoCard = ({
             </Show>
           </div>
         </ContextMenuTrigger>
+        <VideoCardContextMenu
+          folder={mainParentFolder}
+          video={video}
+          mutate={mutate}
+          currentPlatform={currentPlatform}
+        />
       </ContextMenu>
     </Transition >
   );
