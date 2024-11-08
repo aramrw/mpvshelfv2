@@ -159,7 +159,7 @@ pub fn read_os_folder_dir(
 
     child_folders.push(folder.clone());
 
-    update_os_videos(&handle, os_videos, None)?;
+    update_os_videos(handle.clone(), os_videos)?;
     update_os_folders(handle, child_folders)?;
 
     Ok(folder)
