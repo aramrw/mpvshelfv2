@@ -1,4 +1,9 @@
-use std::{fs::create_dir, path::PathBuf, sync::LazyLock};
+use std::{
+    fs::{create_dir, remove_file},
+    io,
+    path::PathBuf,
+    sync::LazyLock,
+};
 
 use data::v1::{OsFolder, OsFolderKey, OsVideo, OsVideoKey, User};
 use native_db::*;
@@ -99,6 +104,15 @@ pub fn init_database(app_data_dir: &PathBuf, handle: &AppHandle) -> Result<(), d
     Ok(())
 }
 
+impl OsVideo {
+    pub fn delete_cover_img(&self) -> io::Result<()> {
+        if let Some(path) = &self.cover_img_path {
+            remove_file(path)?
+        }
+        Ok(())
+    }
+}
+
 #[command]
 pub fn get_os_folders(handle: AppHandle, user_id: String) -> Result<Vec<OsFolder>, DatabaseError> {
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
@@ -191,11 +205,7 @@ pub fn update_os_folders(
 }
 
 #[command]
-pub fn update_os_videos(
-    handle: &AppHandle,
-    os_videos: Vec<OsVideo>,
-    watched: Option<bool>,
-) -> Result<(), DatabaseError> {
+pub fn update_os_videos(handle: AppHandle, os_videos: Vec<OsVideo>) -> Result<(), DatabaseError> {
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().open(&DBMODELS, db_path)?;
     let rtx = db.rw_transaction()?;
@@ -204,16 +214,6 @@ pub fn update_os_videos(
     for mut vid in os_videos {
         vid.update_date = date.clone();
         vid.update_time = time.clone();
-
-        if let Some(watched) = watched {
-            vid.watched = watched;
-        }
-
-        // if let Some(cover_img) = &vid.cover_img_path {
-        //     if !check_cover_img_exists(cover_img) {
-        //         vid.cover_img_path = None;
-        //     }
-        // }
 
         rtx.upsert(vid)?;
     }
@@ -278,13 +278,16 @@ pub fn delete_os_folders(
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().open(&DBMODELS, db_path)?;
 
-    let rtx = db.rw_transaction()?;
+    let rwtx = db.rw_transaction()?;
 
     for folder in os_folders {
-        rtx.remove(folder)?;
+        for vid in &folder.os_videos {
+            vid.delete_cover_img()?;
+        }
+        rwtx.remove(folder)?;
     }
 
-    rtx.commit()?;
+    rwtx.commit()?;
 
     Ok(())
 }
