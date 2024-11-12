@@ -1,5 +1,5 @@
 use std::{
-    fs::{create_dir, remove_file},
+    fs::{self, create_dir, remove_file},
     io,
     path::PathBuf,
     sync::LazyLock,
@@ -9,7 +9,11 @@ use data::v1::{OsFolder, OsFolderKey, OsVideo, OsVideoKey, User};
 use native_db::*;
 use tauri::{command, AppHandle, Manager};
 
-use crate::{error::DatabaseError, misc::get_date_time, mpv::EPISODE_TITLE_REGEX};
+use crate::{
+    error::{DatabaseError, MpvError},
+    misc::get_date_time,
+    mpv::EPISODE_TITLE_REGEX,
+};
 
 pub mod data {
     use native_db::{native_db, ToKey};
@@ -102,6 +106,12 @@ pub fn init_database(app_data_dir: &PathBuf, handle: &AppHandle) -> Result<(), d
 
     handle.manage(db_path);
     Ok(())
+}
+
+impl OsFolder {
+    pub fn get_appdata_frames_folder(&self, app_data_dir: &PathBuf) -> PathBuf {
+        app_data_dir.join("frames").join(&self.title)
+    }
 }
 
 impl OsVideo {
@@ -275,15 +285,39 @@ pub fn delete_os_folders(
     handle: AppHandle,
     os_folders: Vec<OsFolder>,
 ) -> Result<(), DatabaseError> {
+    let app_data_dir = handle.path().app_data_dir()?;
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().open(&DBMODELS, db_path)?;
 
     let rwtx = db.rw_transaction()?;
 
     for folder in os_folders {
-        for vid in &folder.os_videos {
-            vid.delete_cover_img()?;
+        let child_folders: Vec<OsFolder> = rwtx
+            .scan()
+            .secondary(OsFolderKey::parent_path)?
+            .start_with(Some(folder.path.as_str()))?
+            .try_collect()?;
+
+        let videos: Vec<OsVideo> = rwtx
+            .scan()
+            .secondary(OsFolderKey::parent_path)?
+            .start_with(Some(folder.path.as_str()))?
+            .try_collect()?;
+
+        for cf in child_folders {
+            rwtx.remove(cf)?;
         }
+
+        for vid in videos {
+            rwtx.remove(vid)?;
+        }
+
+        if let Err(e) = fs::remove_dir_all(folder.get_appdata_frames_folder(&app_data_dir)) {
+            if e.kind() != io::ErrorKind::NotFound {
+                return Err(DatabaseError::IoError(e));
+            }
+        }
+
         rwtx.remove(folder)?;
     }
 
