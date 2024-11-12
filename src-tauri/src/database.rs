@@ -300,18 +300,19 @@ pub fn delete_os_folders(
 
         let videos: Vec<OsVideo> = rwtx
             .scan()
-            .secondary(OsFolderKey::parent_path)?
-            .start_with(Some(folder.path.as_str()))?
+            .secondary(OsVideoKey::main_folder_path)?
+            .start_with(folder.path.as_str())?
             .try_collect()?;
-
-        for cf in child_folders {
-            rwtx.remove(cf)?;
-        }
 
         for vid in videos {
             rwtx.remove(vid)?;
         }
 
+        for cf in child_folders {
+            rwtx.remove(cf)?;
+        }
+
+        // removes the frames folder
         if let Err(e) = fs::remove_dir_all(folder.get_appdata_frames_folder(&app_data_dir)) {
             if e.kind() != io::ErrorKind::NotFound {
                 return Err(DatabaseError::IoError(e));
