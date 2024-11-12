@@ -83,7 +83,7 @@ pub async fn play_video(
 
     args.extend([
         format!("--script={}", mpvshelf_plugins.to_string_lossy()),
-        format!("--title={} | mpvshelf", video.title),
+        format!("--title={} | mpvshelf", main_folder.title),
     ]);
 
     let status = spawn_mpv(&args, user.settings.mpv_path)?;
@@ -91,17 +91,23 @@ pub async fn play_video(
     match extract_mpv_stdout_path(output.stdout.clone()) {
         Some(path) => {
             let last_watched_video_path = normalize_path(&path);
-            //println!("{:?}", last_watched_video_path);
             match main_folder
                 .os_videos
                 .iter()
-                .find(|vid| vid.path == last_watched_video_path.to_string_lossy())
+                .enumerate()
+                .find(|(_, vid)| vid.path == last_watched_video_path.to_string_lossy())
             {
-                Some(last_watched_os_video) => {
+                Some((last_index, lvw)) => {
+                    dbg!(last_index);
                     let mut main_folder_clone = main_folder.clone();
-                    main_folder_clone.last_watched_video = Some(last_watched_os_video.clone());
-
-                    update_os_videos(&handle, vec![last_watched_os_video.clone()], Some(true))?;
+                    for (i, vid) in &mut main_folder_clone.os_videos.iter_mut().enumerate() {
+                        vid.watched = true;
+                        if i == last_index {
+                            break;
+                        }
+                    }
+                    main_folder_clone.last_watched_video = Some(lvw.clone());
+                    update_os_videos(handle.clone(), main_folder_clone.os_videos.clone())?;
                     update_os_folders(handle.clone(), vec![main_folder_clone])?;
                 }
                 None => return Err(last_watched_video_path.into()),
@@ -136,9 +142,8 @@ pub fn spawn_mpv(args: &[String], mpv_path: Option<String>) -> Result<Child, Mpv
 
 fn extract_mpv_stdout_path(stdout: Vec<u8>) -> Option<String> {
     let output_str = String::from_utf8(stdout).ok()?;
-    //println!("\n\n{output_str}\n\n");
 
-    for line in output_str.lines() {
+    for line in output_str.lines().rev() {
         if let Some(stripped) = line.strip_prefix("Playing: ") {
             return Some(stripped.to_string());
         }

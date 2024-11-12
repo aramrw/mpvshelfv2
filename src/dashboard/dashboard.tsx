@@ -17,12 +17,12 @@ export default function Dashboard() {
     if (user) {
       setUser(user);
       const folders = await get_os_folders(user.id);
-      return folders || []; // Always return an array, even if empty
+      return folders || []; 
     }
-    return []; // Return an empty array if no user is found
+    return []; 
   });
 
-  const [error] = createResource(() => mpv_system_check());
+  const [error] = createResource(() => mpv_system_check(user()?.settings.mpv_path));
   const navigate = useNavigate();
 
   return (
@@ -39,7 +39,7 @@ export default function Dashboard() {
               osFolders.state === "pending" && (
                 <Skeleton class="h-32 w-24 sm:h-44 sm:w-32 md:h-48 md:w-36 lg:h-52 lg:w-40" />
               )
-						}
+            }
           >
             <For each={osFolders()}>
               {(folder) => (

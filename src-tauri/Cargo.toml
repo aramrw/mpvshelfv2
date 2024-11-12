@@ -1,8 +1,8 @@
 [package]
-name = "mpv_shelf_v2"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+name = "mpvshelf_v2"
+version = "0.2.0"
+description = "A macOS & windows folder wrapper to track and watch videos with mpv."
+authors = ["aramrw"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -30,7 +30,7 @@ thiserror = "1.0.65"
 phf = "0.11.2"
 tauri-plugin-os = "2"
 chrono = "0.4.38"
-regex = { version= "1.11.1", features = ["std", "perf"] }
+regex = { version = "1.11.1", features = ["std", "perf"] }
 rayon = "1.10.0"
 reqwest = "0.12.9"
 futures-util = "0.3.31"

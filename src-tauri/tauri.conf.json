@@ -1,47 +1,35 @@
 {
-	"$schema": "https://schema.tauri.app/config/2",
-	"productName": "mpv_shelf_v2",
-	"version": "0.1.0",
-	"identifier": "com.mpvshelfv2.dev",
-	"build": {
-		"beforeDevCommand": "pnpm --max-http-header-size=size dev",
-		"devUrl": "http://localhost:1420",
-		"beforeBuildCommand": "pnpm build",
-		"frontendDist": "../dist"
-	},
-	"app": {
-		"windows": [
-			{
-				"title": "MPV SHELFv2",
-				"width": 800,
-				"height": 600
-			}
-		],
-		"security": {
-			"assetProtocol": {
-				"scope": [
-					"**/**"
-				],
-				"enable": true
-			},
-			"csp": null
-		}
-	},
-	"bundle": {
-		"active": true,
-		"targets": "all",
-		"icon": [
-			"icons/32x32.png",
-			"icons/128x128.png",
-			"icons/128x128@2x.png",
-			"icons/icon.icns",
-			"icons/icon.ico"
-		],
-		"resources": [
-			"resources/**/*"
-		],
-		"externalBin": [
-			"bin/ffmpeg"
-		]
-	}
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "mpv_shelf_v2",
+  "version": "0.2.0",
+  "identifier": "com.mpvshelfv2.dev",
+  "build": {
+    "beforeDevCommand": "pnpm --max-http-header-size=size dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "mpvshelf_v2",
+        "width": 800,
+        "height": 600
+      }
+    ],
+    "security": {
+      "assetProtocol": {
+        "scope": ["**/**"],
+        "enable": true
+      },
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "resources": ["resources/**/*"],
+    "externalBin": ["bin/ffmpeg"]
+  }
 }
