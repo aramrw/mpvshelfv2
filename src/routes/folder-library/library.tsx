@@ -58,7 +58,7 @@ export default function Library() {
             </TabsList>
             <Show when={osVideos()}>
               <TabsContent value="videos">
-                <LibraryVideosSection mutate={mutate} mainParentFolder={mainParentFolder} osVideos={osVideos} user={user()!} />
+                <LibraryVideosSection mutate={mutate} mainParentFolder={mainParentFolder} osVideos={osVideos} user={user} />
               </TabsContent>
             </Show>
             <Show when={childFolders()}>
