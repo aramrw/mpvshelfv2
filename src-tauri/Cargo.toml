@@ -1,5 +1,5 @@
 [package]
-name = "mpv_shelf_v2"
+name = "mpvshelf_v2"
 version = "0.2.0"
 description = "A macOS & windows folder wrapper to track and watch videos with mpv."
 authors = ["aramrw"]
