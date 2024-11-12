@@ -2123,7 +2123,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mpv_shelf_v2"
+name = "mpvshelf_v2"
 version = "0.2.0"
 dependencies = [
  "chrono",
