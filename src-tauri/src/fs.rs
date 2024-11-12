@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 //use std::time::Instant;
-use futures_util::{StreamExt, TryStreamExt};
+use futures_util::TryStreamExt;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{env, fs, io};
 use std::{fs::read_dir, process::Command};
@@ -50,9 +50,9 @@ fn read_dir_helper(
 
         if let Some(extension) = entry_path.extension() {
             let extension_lossy = extension.to_string_lossy();
-            if SUPPORTED_VIDEO_FORMATS.get_key(&extension_lossy).is_some() {
-                video_file_paths.push(entry_path.to_string_lossy().to_string());
-            } else if SUPPORTED_AUDIO_FORMATS.get_key(&extension_lossy).is_some() {
+            if SUPPORTED_VIDEO_FORMATS.get_key(&extension_lossy).is_some()
+                || SUPPORTED_AUDIO_FORMATS.get_key(&extension_lossy).is_some()
+            {
                 video_file_paths.push(entry_path.to_string_lossy().to_string());
             }
         } else if entry_path.is_dir() {
@@ -79,11 +79,7 @@ pub fn read_os_folder_dir(
     let mut update_datetime = update_datetime;
     let app_data_dir = handle.path().app_data_dir()?;
 
-    read_dir_helper(
-        &path,
-        &mut child_folder_paths,
-        &mut video_file_paths,
-    )?;
+    read_dir_helper(&path, &mut child_folder_paths, &mut video_file_paths)?;
 
     if child_folder_paths.is_empty() && video_file_paths.is_empty() {
         return Err(DatabaseError::IoError(io::Error::new(
@@ -94,9 +90,11 @@ pub fn read_os_folder_dir(
 
     if cover_img_path.is_none() {
         if let Some(first_vid_path) = video_file_paths.first() {
-            let new_cover_img_path = join_cover_img_path(first_vid_path, &app_data_dir)?;
+            let new_cover_img_path =
+                join_cover_img_path(parent_path.as_ref(), &path, first_vid_path, &app_data_dir)?;
             call_ffmpeg_sidecar(
                 &handle,
+                None,
                 first_vid_path.clone(),
                 Path::new(&new_cover_img_path),
             )
@@ -117,12 +115,15 @@ pub fn read_os_folder_dir(
 
     let os_videos: Vec<OsVideo> = video_file_paths
         .into_iter()
-        .map(|vid_path| {
+        .enumerate()
+        .map(|(i, vid_path)| {
             create_os_video(
                 &handle,
                 user_id.clone(),
+                parent_path.as_ref(),
                 path.clone(),
                 vid_path,
+                i + 1,
                 update_date.clone(),
                 update_time.clone(),
                 &app_data_dir,
@@ -168,8 +169,10 @@ pub fn read_os_folder_dir(
 fn create_os_video(
     handle: &AppHandle,
     user_id: String,
+    super_parent: Option<impl AsRef<str>>,
     main_folder_path: String,
     path: String,
+    index: usize,
     update_date: String,
     update_time: String,
     app_data_dir: &Path,
@@ -186,9 +189,9 @@ fn create_os_video(
             .to_string_lossy()
             .to_string();
 
-    let cover_img_path = join_cover_img_path(&path, app_data_dir)?;
+    let cover_img_path = join_cover_img_path(super_parent, &main_folder_path, &path, app_data_dir)?;
     if !check_cover_img_exists(&cover_img_path) {
-        call_ffmpeg_sidecar(handle, &path, Path::new(&cover_img_path)).unwrap();
+        call_ffmpeg_sidecar(handle, Some(index), &path, Path::new(&cover_img_path)).unwrap();
     }
 
     let vid = OsVideo {
@@ -215,36 +218,93 @@ pub fn check_cover_img_exists(img_path: &str) -> bool {
 }
 
 fn join_cover_img_path(
-    path: impl AsRef<str>,
+    super_parent: Option<impl AsRef<str>>,
+    parent: impl AsRef<str>,
+    vid_path: impl AsRef<str>,
     app_data_dir: &Path,
 ) -> Result<String, DatabaseError> {
-    let title = Path::new(path.as_ref()).file_stem().ok_or_else(|| {
-        DatabaseError::IoError(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!(
-                "'{}' contained invalid characters when trying to join cover img path.",
-                path.as_ref()
-            ),
-        ))
-    })?;
-    // Construct the path for the entry frame without the original video extension
-    let cover_img_full_path = app_data_dir
-        .join("frames")
-        .join(title) // This is the stem without the original extension
+    let parent = parent.as_ref();
+    let vid_path = vid_path.as_ref();
+
+    // Extract the super_parent_title if present
+    let super_parent_title = super_parent
+        .map(|sp| {
+            Path::new(sp.as_ref())
+                .file_stem()
+                .map(|stem| stem.to_string_lossy().to_string())
+                .ok_or_else(|| {
+                    DatabaseError::IoError(io::Error::new(
+                        io::ErrorKind::NotFound,
+                        format!(
+                            "failed to get the dir name (super_parent) for '{}'",
+                            sp.as_ref()
+                        ),
+                    ))
+                })
+        })
+        .transpose()?;
+
+    // Extract the parent directory title (directory name)
+    let parent_title = Path::new(parent)
+        .file_stem()
+        .and_then(|stem| stem.to_str()) // Convert to string if possible
+        .ok_or_else(|| {
+            DatabaseError::IoError(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("failed to get this dir name (vid_parent) for '{}'", parent),
+            ))
+        })?;
+
+    // Extract the title (filename without extension) from vid_path
+    let title = Path::new(vid_path)
+        .file_stem()
+        .and_then(|stem| stem.to_str()) // Convert to string if possible
+        .ok_or_else(|| {
+            DatabaseError::IoError(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!(
+                    "'{}' contained invalid characters when trying to join cover img path.",
+                    vid_path
+                ),
+            ))
+        })?;
+
+    // Construct the path to store the cover image
+    let mut cover_img_parent_dir_path = app_data_dir.join("frames");
+
+    // Conditionally join super_parent_title if it exists
+    if let Some(super_parent_title) = super_parent_title {
+        cover_img_parent_dir_path = cover_img_parent_dir_path.join(super_parent_title);
+    }
+
+    // Always join parent_title
+    cover_img_parent_dir_path = cover_img_parent_dir_path.join(parent_title);
+
+    // Create the directory if it doesn't exist
+    if !cover_img_parent_dir_path.exists() {
+        fs::create_dir_all(&cover_img_parent_dir_path)?;
+    }
+
+    // Construct the full path for the cover image (video filename with .jpg extension)
+    let cover_img_full_path = cover_img_parent_dir_path
+        .join(title)
         .with_extension("jpg")
         .to_string_lossy()
         .to_string();
+
     Ok(cover_img_full_path)
 }
 
 fn call_ffmpeg_sidecar(
     handle: &AppHandle,
+    index: Option<usize>,
     entry_path: impl AsRef<str>,
     entry_frame_full_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let frame_index = index.unwrap_or(5).to_string();
     let sidecar_cmd = handle.shell().sidecar("ffmpeg").unwrap().args([
         "-ss",
-        "5",
+        frame_index.as_str(),
         "-i",
         entry_path.as_ref(),
         "-frames:v",
