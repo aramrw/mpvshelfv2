@@ -1,20 +1,24 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 //use std::time::Instant;
 use futures_util::TryStreamExt;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelBridge,
+};
+use rayon::slice::ParallelSliceMut;
 use std::{env, fs, io};
 use std::{fs::read_dir, process::Command};
 use tokio::io::AsyncWriteExt;
 
 use crate::database::data::v1::OsVideo;
-use crate::database::update_os_videos;
-use crate::error::MpvError;
+use crate::database::{data::v1::OsFolder, update_os_folders};
+use crate::database::{delete_os_folders, delete_os_videos, update_os_videos};
+use crate::error::{MpvError, MpvShelfError, ReadDirError};
 use crate::misc::get_date_time;
 use crate::mpv::EPISODE_TITLE_REGEX;
-use crate::{
-    database::{data::v1::OsFolder, update_os_folders},
-    error::DatabaseError,
-};
+use rayon::iter::ParallelIterator;
 use reqwest::Client;
 use tauri::{command, AppHandle, Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
@@ -65,41 +69,114 @@ fn read_dir_helper(
 }
 
 #[command]
+pub fn upsert_read_os_dir(
+    handle: AppHandle,
+    dir: String,
+    parent_path: Option<String>,
+    user_id: String,
+    c_folders: Option<Vec<OsFolder>>,
+    c_videos: Option<Vec<OsVideo>>,
+) -> Result<bool, MpvShelfError> {
+    let mut del_cf: Vec<OsFolder> = Vec::new();
+    let mut del_v: Vec<OsVideo> = Vec::new();
+
+    if let Some(c_folders) = &c_folders {
+        //println!("| c_folders_length: {}", c_folders.len());
+        for sf in c_folders {
+            if !Path::new(&sf.path).exists() {
+                del_cf.push(sf.clone())
+            }
+        }
+    }
+
+    if let Some(c_videos) = &c_videos {
+        //println!("| c_videos_length: {}", c_videos.len());
+
+        for sv in c_videos {
+            if !Path::new(&sv.path).exists() {
+                del_v.push(sv.clone())
+            }
+        }
+    }
+
+    let group = match read_os_folder_dir(
+        handle.clone(),
+        dir,
+        user_id,
+        None,
+        parent_path,
+        c_folders,
+        c_videos,
+    ) {
+        Ok(g) => g,
+        Err(ReadDirError::FullyHydrated(_)) => return Ok(false),
+        Err(e) => return Err(MpvShelfError::ReadDir(e)),
+    };
+
+    let (main_folder, mut new_cfs, new_vids) = group;
+    let cover_img = &main_folder.cover_img_path.clone();
+
+    if !del_cf.is_empty() {
+        delete_os_folders(handle.clone(), del_cf)?;
+    }
+    if !del_v.is_empty() {
+        delete_os_videos(&handle, del_v)?;
+    }
+
+    new_cfs.push(main_folder);
+    update_os_folders(handle.clone(), new_cfs)?;
+    update_os_videos(handle.clone(), new_vids)?;
+
+    let now = Instant::now();
+    if let Some(path) = cover_img {
+        while fs::metadata(path).is_err() {
+            if now.elapsed() >= Duration::from_millis(5000) {
+                break;
+            } else {
+                sleep(Duration::from_millis(100));
+            }
+        }
+    }
+    Ok(true)
+}
+
+type FolderGroup = (OsFolder, Vec<OsFolder>, Vec<OsVideo>);
+
+#[command]
 pub fn read_os_folder_dir(
     handle: AppHandle,
     path: String,
     user_id: String,
-    cover_img_path: Option<String>,
     update_datetime: Option<(String, String)>,
     parent_path: Option<String>,
-) -> Result<OsFolder, DatabaseError> {
+    c_folders: Option<Vec<OsFolder>>,
+    c_videos: Option<Vec<OsVideo>>,
+) -> Result<FolderGroup, ReadDirError> {
     let mut child_folder_paths: Vec<String> = Vec::new();
     let mut video_file_paths: Vec<String> = Vec::new();
-    let mut cover_img_path: Option<String> = cover_img_path;
     let mut update_datetime = update_datetime;
     let app_data_dir = handle.path().app_data_dir()?;
 
     read_dir_helper(&path, &mut child_folder_paths, &mut video_file_paths)?;
 
     if child_folder_paths.is_empty() && video_file_paths.is_empty() {
-        return Err(DatabaseError::IoError(io::Error::new(
+        return Err(ReadDirError::Io(io::Error::new(
             io::ErrorKind::NotFound,
             format!("{path} contains 0 supported files."),
         )));
-    }
-
-    if cover_img_path.is_none() {
-        if let Some(first_vid_path) = video_file_paths.first() {
-            let new_cover_img_path =
-                join_cover_img_path(parent_path.as_ref(), &path, first_vid_path, &app_data_dir)?;
-            call_ffmpeg_sidecar(
-                &handle,
-                None,
-                first_vid_path.clone(),
-                Path::new(&new_cover_img_path),
-            )
-            .unwrap();
-            cover_img_path = Some(new_cover_img_path);
+    } else if let Some(ref c_videos) = c_videos {
+        if video_file_paths.len() == c_videos.len() {
+            if let Some(ref c_folders) = c_folders {
+                if child_folder_paths.len() == c_folders.len() {
+                    return Err(ReadDirError::FullyHydrated(path));
+                }
+            } else {
+                return Err(ReadDirError::FullyHydrated(path));
+            }
+        }
+    } else if let Some(ref c_folders) = c_folders {
+        if child_folder_paths.len() == c_folders.len() {
+            return Err(ReadDirError::FullyHydrated(path));
         }
     }
 
@@ -113,57 +190,129 @@ pub fn read_os_folder_dir(
     let update_date = update_datetime.clone().unwrap().0;
     let update_time = update_datetime.clone().unwrap().1;
 
-    let os_videos: Vec<OsVideo> = video_file_paths
-        .into_iter()
+    let mut total_child_folders: Vec<OsFolder> = Vec::new();
+    let mut total_videos: Vec<OsVideo> = Vec::new();
+    let c_videos_paths: Option<HashSet<String>> =
+        c_videos.map(|videos| videos.into_iter().map(|os_video| os_video.path).collect());
+
+    let mut current_folder_videos: Vec<OsVideo> = video_file_paths
+        .into_par_iter()
         .enumerate()
-        .map(|(i, vid_path)| {
+        .filter_map(|(i, vid_path)| {
+            if let Some(ref paths) = c_videos_paths {
+                if paths.contains(&vid_path) {
+                    return None;
+                }
+            }
             create_os_video(
                 &handle,
                 user_id.clone(),
                 parent_path.as_ref(),
                 path.clone(),
                 vid_path,
-                i + 1,
+                i + 3,
                 update_date.clone(),
                 update_time.clone(),
                 &app_data_dir,
             )
+            .ok()
         })
-        .try_collect()?;
+        .collect::<Vec<OsVideo>>();
 
-    let mut child_folders: Vec<OsFolder> = child_folder_paths
+    let mut first_video: Option<OsVideo> = None;
+    if let Some(mut first_vid) = current_folder_videos.first().cloned() {
+        let new_cover_img_path =
+            join_cover_img_path(parent_path.as_ref(), &path, &first_vid.path, &app_data_dir)?;
+        call_ffmpeg_sidecar(
+            &handle,
+            None,
+            &first_vid.path,
+            Path::new(&new_cover_img_path),
+        )
+        .unwrap();
+        first_vid.cover_img_path = Some(new_cover_img_path);
+        first_video = Some(first_vid);
+    }
+
+    current_folder_videos.par_sort_by(|a, b| {
+        // Extract the episode number from the title using regex
+        let num_a = EPISODE_TITLE_REGEX
+            .captures(&a.title)
+            .and_then(|caps| caps.get(1)) // Assuming the first capturing group contains the episode number
+            .and_then(|m| m.as_str().parse::<u32>().ok())
+            .unwrap_or(0);
+
+        let num_b = EPISODE_TITLE_REGEX
+            .captures(&b.title)
+            .and_then(|caps| caps.get(1))
+            .and_then(|m| m.as_str().parse::<u32>().ok())
+            .unwrap_or(0);
+
+        num_a.cmp(&num_b)
+    });
+    total_videos.extend(current_folder_videos);
+
+    let child_folder_groups: Vec<FolderGroup> = child_folder_paths
         .into_par_iter()
         .filter_map(|folder_path| {
             read_os_folder_dir(
                 handle.clone(),
                 folder_path,
                 user_id.clone(),
-                cover_img_path.clone(),
                 update_datetime.clone(),
                 Some(path.clone()),
+                None,
+                None,
             )
             .ok()
         })
         .collect();
 
-    let folder = OsFolder {
+    for group in child_folder_groups.into_iter() {
+        let (folder, c_folders, g_videos) = group;
+
+        if first_video.is_none() {
+            if let Some(mut first_vid) = g_videos.first().cloned() {
+                let new_cover_img_path = join_cover_img_path(
+                    parent_path.as_ref(),
+                    &path,
+                    &first_vid.path,
+                    &app_data_dir,
+                )?;
+                call_ffmpeg_sidecar(
+                    &handle,
+                    None,
+                    &first_vid.path,
+                    Path::new(&new_cover_img_path),
+                )
+                .unwrap();
+                first_vid.cover_img_path = Some(new_cover_img_path);
+                first_video = Some(first_vid);
+            }
+        }
+
+        total_child_folders.push(folder);
+        total_child_folders.extend(c_folders);
+        total_videos.extend(g_videos);
+    }
+
+    let mut cover_img_path = None;
+    if let Some(first_vid) = &first_video {
+        cover_img_path = first_vid.cover_img_path.clone();
+    }
+
+    let main_folder = OsFolder {
         user_id,
         path,
         title: os_folder.file_name().unwrap().to_string_lossy().to_string(),
         parent_path,
-        os_videos: os_videos.clone(),
-        last_watched_video: os_videos.first().cloned(),
+        last_watched_video: first_video,
         cover_img_path,
         update_date,
         update_time,
     };
 
-    child_folders.push(folder.clone());
-
-    update_os_videos(handle.clone(), os_videos)?;
-    update_os_folders(handle, child_folders)?;
-
-    Ok(folder)
+    Ok((main_folder, total_child_folders, total_videos))
 }
 
 fn create_os_video(
@@ -176,15 +325,15 @@ fn create_os_video(
     update_date: String,
     update_time: String,
     app_data_dir: &Path,
-) -> Result<OsVideo, DatabaseError> {
+) -> Result<OsVideo, io::Error> {
     let title =
         Path::new(&path)
             .file_name()
             .ok_or_else(|| {
-                DatabaseError::IoError(io::Error::new(
+                io::Error::new(
         io::ErrorKind::InvalidInput,
         format!("'{path}' contained invalid characters when trying get the the OsVideo title."),
-    ))
+    )
             })?
             .to_string_lossy()
             .to_string();
@@ -201,6 +350,8 @@ fn create_os_video(
         title,
         cover_img_path: Some(cover_img_path),
         watched: false,
+        duration: 0,
+        position: 0,
         update_date,
         update_time,
     };
@@ -222,7 +373,7 @@ fn join_cover_img_path(
     parent: impl AsRef<str>,
     vid_path: impl AsRef<str>,
     app_data_dir: &Path,
-) -> Result<String, DatabaseError> {
+) -> Result<String, io::Error> {
     let parent = parent.as_ref();
     let vid_path = vid_path.as_ref();
 
@@ -233,13 +384,13 @@ fn join_cover_img_path(
                 .file_stem()
                 .map(|stem| stem.to_string_lossy().to_string())
                 .ok_or_else(|| {
-                    DatabaseError::IoError(io::Error::new(
+                    io::Error::new(
                         io::ErrorKind::NotFound,
                         format!(
                             "failed to get the dir name (super_parent) for '{}'",
                             sp.as_ref()
                         ),
-                    ))
+                    )
                 })
         })
         .transpose()?;
@@ -249,10 +400,10 @@ fn join_cover_img_path(
         .file_stem()
         .and_then(|stem| stem.to_str()) // Convert to string if possible
         .ok_or_else(|| {
-            DatabaseError::IoError(io::Error::new(
+            io::Error::new(
                 io::ErrorKind::NotFound,
                 format!("failed to get this dir name (vid_parent) for '{}'", parent),
-            ))
+            )
         })?;
 
     // Extract the title (filename without extension) from vid_path
@@ -260,13 +411,13 @@ fn join_cover_img_path(
         .file_stem()
         .and_then(|stem| stem.to_str()) // Convert to string if possible
         .ok_or_else(|| {
-            DatabaseError::IoError(io::Error::new(
+            io::Error::new(
                 io::ErrorKind::InvalidInput,
                 format!(
                     "'{}' contained invalid characters when trying to join cover img path.",
                     vid_path
                 ),
-            ))
+            )
         })?;
 
     // Construct the path to store the cover image
@@ -300,7 +451,7 @@ fn call_ffmpeg_sidecar(
     index: Option<usize>,
     entry_path: impl AsRef<str>,
     entry_frame_full_path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), MpvError> {
     let frame_index = index.unwrap_or(5).to_string();
     let sidecar_cmd = handle.shell().sidecar("ffmpeg").unwrap().args([
         "-ss",
@@ -313,7 +464,22 @@ fn call_ffmpeg_sidecar(
     ]);
 
     let (mut _rx, mut _child) = sidecar_cmd.spawn().unwrap();
-    //println!("running ffmpegsidecar function");
+
+    // while let Some(event) = rx.recv() {
+    //     match event {
+    //         // CommandEvent::Stdout(line) => {
+    //         //     println!("stdout: {}", String::from_utf8_lossy(&line));
+    //         // }
+    //         // CommandEvent::Stderr(line) => {
+    //         //     eprintln!("stderr: {}", String::from_utf8_lossy(&line));
+    //         // }
+    //         CommandEvent::Terminated(_) => {
+    //             // Process has finished
+    //             return Ok(());
+    //         }
+    //         _ => {}
+    //     }
+    // }
 
     Ok(())
 }
@@ -326,8 +492,8 @@ pub fn normalize_path(path: &str) -> PathBuf {
 }
 
 pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Result<u32, MpvError> {
-    let mut media_files: Vec<fs::DirEntry> = fs::read_dir(parent_path)
-        .unwrap()
+    let mut media_files: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
+        .par_bridge()
         .filter_map(|entry| entry.ok())
         .collect();
 
@@ -348,7 +514,7 @@ pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Resu
         false
     });
 
-    media_files.sort_by(|a, b| {
+    media_files.par_sort_by(|a, b| {
         // Extract the episode number from the title using regex
         let num_a = EPISODE_TITLE_REGEX
             .captures(&a.file_name().to_string_lossy())
@@ -371,8 +537,8 @@ pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Resu
     };
 
     let current_video_index = media_files
-        .iter()
-        .position(|entry| entry.file_name() == selected_video_file_name);
+        .par_iter()
+        .position_any(|entry| entry.file_name() == selected_video_file_name);
 
     match current_video_index {
         Some(index) => Ok(index as u32),
@@ -425,6 +591,8 @@ pub fn show_in_folder(path: String) {
         Command::new("explorer")
             .args(["/select,", &path]) // The comma after select is not a typo
             .spawn()
+            .unwrap()
+            .wait()
             .unwrap();
     }
 
@@ -462,6 +630,11 @@ pub fn show_in_folder(path: String) {
 
     #[cfg(target_os = "macos")]
     {
-        Command::new("open").args(["-R", &path]).spawn().unwrap();
+        Command::new("open")
+            .args(["-R", &path])
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
     }
 }
