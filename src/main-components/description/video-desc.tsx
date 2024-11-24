@@ -4,7 +4,7 @@ import { OsVideo } from "../../models";
 
 interface VideoDescProps {
   video: () => OsVideo | null;
-  onClick: () => void;
+  onClick?: () => void;
 }
 
 export const VideoDescription: Component<VideoDescProps> = (props) => {
