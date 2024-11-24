@@ -16,10 +16,7 @@ use crate::database::{
     get_os_folders_by_path, get_os_videos, get_user_by_id, update_os_folders, update_os_videos,
     update_user,
 };
-use crate::fs::{
-    check_cover_img_exists, download_mpv_binary, read_os_folder_dir, show_in_folder,
-    upsert_read_os_dir,
-};
+use crate::fs::{check_cover_img_exists, download_mpv_binary, show_in_folder, upsert_read_os_dir};
 use crate::mpv::{mpv_system_check, play_video};
 use crate::tray::init_tray;
 
@@ -48,7 +45,7 @@ pub fn run() {
             delete_os_folders,
             get_os_videos,
             update_os_videos,
-            read_os_folder_dir,
+            upsert_read_os_dir,
             check_cover_img_exists,
             show_in_folder,
             mpv_system_check,
