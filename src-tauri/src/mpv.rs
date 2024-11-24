@@ -1,13 +1,15 @@
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use regex::Regex;
 use tauri::path::BaseDirectory;
 use tauri::{command, AppHandle, Manager};
 
 use crate::database::data::v1::{OsFolder, OsVideo, User};
 use crate::database::{update_os_folders, update_os_videos};
-use crate::error::MpvError;
+use crate::error::{MpvError, MpvStdoutError};
 use crate::fs::{find_video_index, normalize_path};
 use crate::tray::build_window;
 use std::io;
+use std::num::ParseIntError;
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
@@ -18,6 +20,65 @@ pub static EPISODE_TITLE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     )
     .unwrap()
 });
+
+#[derive(Debug, Clone)]
+pub enum TimestampType {
+    Duration,
+    Position,
+}
+
+#[derive(Debug, Clone)]
+struct MpvPlaybackData {
+    /// Title of the last video played
+    last_video_path: String,
+    /// Timestamp of the last position watched
+    last_video_position: u64,
+    /// Total duration of the last video
+    last_video_duration: u64,
+}
+
+impl MpvPlaybackData {
+    fn new() -> Self {
+        MpvPlaybackData {
+            last_video_path: String::from(""),
+            last_video_position: 0,
+            last_video_duration: 0,
+        }
+    }
+
+    pub fn update_timestamp(
+        &mut self,
+        ts_type: TimestampType,
+        ts: String,
+    ) -> Result<(), MpvStdoutError> {
+        let parts: Vec<&str> = ts.split(':').collect();
+
+        if parts.len() != 3 {
+            return Err(MpvStdoutError::InvalidTimestamp(ts));
+        }
+
+        let hours: u64 = parts[0].parse().map_err(|e: ParseIntError| {
+            MpvStdoutError::ParseInt(parts[0].to_string(), e.to_string())
+        })?;
+
+        let minutes: u64 = parts[1].parse().map_err(|e: ParseIntError| {
+            MpvStdoutError::ParseInt(parts[1].to_string(), e.to_string())
+        })?;
+
+        let seconds: u64 = parts[2].parse().map_err(|e: ParseIntError| {
+            MpvStdoutError::ParseInt(parts[2].to_string(), e.to_string())
+        })?;
+
+        let total_seconds = hours * 3600 + minutes * 60 + seconds;
+
+        match ts_type {
+            TimestampType::Position => self.last_video_position = total_seconds,
+            TimestampType::Duration => self.last_video_duration = total_seconds,
+        }
+
+        Ok(())
+    }
+}
 
 #[command]
 pub fn mpv_system_check(mpv_path: Option<String>) -> Result<(), MpvError> {
@@ -31,18 +92,20 @@ pub fn mpv_system_check(mpv_path: Option<String>) -> Result<(), MpvError> {
             } else {
                 // Distinguish based on provided absolute path or system PATH
                 if let Some(abs_path) = mpv_path {
-                    Err(MpvError::AbsolutePathNotFound(abs_path))
-                } else {
-                    Err(MpvError::SudoPATHNotFound)
+                    if abs_path.is_empty() {
+                        return Err(MpvError::AbsolutePathNotFound(abs_path));
+                    }
                 }
+                Err(MpvError::SudoPATHNotFound)
             }
         }
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             if let Some(abs_path) = mpv_path {
-                Err(MpvError::AbsolutePathNotFound(abs_path))
-            } else {
-                Err(MpvError::SudoPATHNotFound)
+                if abs_path.is_empty() {
+                    return Err(MpvError::AbsolutePathNotFound(abs_path));
+                }
             }
+            Err(MpvError::SudoPATHNotFound)
         }
         Err(e) => Err(MpvError::IoError(e)),
     }
@@ -52,6 +115,7 @@ pub fn mpv_system_check(mpv_path: Option<String>) -> Result<(), MpvError> {
 pub async fn play_video(
     handle: AppHandle,
     main_folder: OsFolder,
+    mut os_videos: Vec<OsVideo>,
     video: OsVideo,
     user: User,
 ) -> Result<(), MpvError> {
@@ -72,8 +136,8 @@ pub async fn play_video(
     let mpvshelf_plugins = handle
         .path()
         .resolve("resources/mpvshelf.lua", BaseDirectory::Resource)?;
-    let mut args = Vec::new();
 
+    let mut args = Vec::new();
     if user.settings.autoplay {
         args = vec![
             format!("--playlist-start={video_index}"),
@@ -88,40 +152,35 @@ pub async fn play_video(
 
     let status = spawn_mpv(&args, user.settings.mpv_path)?;
     let output = status.wait_with_output()?;
-    match extract_mpv_stdout_path(output.stdout.clone()) {
-        Some(path) => {
-            let last_watched_video_path = normalize_path(&path);
-            match main_folder
-                .os_videos
-                .iter()
-                .enumerate()
-                .find(|(_, vid)| vid.path == last_watched_video_path.to_string_lossy())
-            {
-                Some((last_index, lvw)) => {
-                    dbg!(last_index);
-                    let mut main_folder_clone = main_folder.clone();
-                    for (i, vid) in &mut main_folder_clone.os_videos.iter_mut().enumerate() {
-                        vid.watched = true;
-                        if i == last_index {
-                            break;
-                        }
-                    }
-                    main_folder_clone.last_watched_video = Some(lvw.clone());
-                    update_os_videos(handle.clone(), main_folder_clone.os_videos.clone())?;
-                    update_os_folders(handle.clone(), vec![main_folder_clone])?;
-                }
-                None => return Err(last_watched_video_path.into()),
+    let data = parse_mpv_stdout(output.stdout.clone()).unwrap();
+
+    //println!("{:#?}", data);
+    let mut main_folder_clone = main_folder.clone();
+    let mut last_watched_video = None; // Track the last updated video
+
+    // Iterate through all entries in `data`, each representing a video path, duration, and position
+    for entry in &data {
+        let video_path = &entry.last_video_path;
+
+        // Iterate through all videos in `os_videos` and update those that match the path
+        for vid in &mut os_videos.iter_mut() {
+            if vid.path == *video_path {
+                vid.watched = true;
+                vid.position = entry.last_video_position;
+                vid.duration = entry.last_video_duration;
+
+                // Track this as the last watched video
+                last_watched_video = Some(vid.clone());
             }
-        }
-        None => {
-            return Err(MpvError::MissingStdoutVideoTitle(
-                video.title,
-                String::from_utf8(output.stdout)?,
-            ))
         }
     }
 
-    //println!("{:#?}", last_watched_video_path);
+    // Assign the tracked last watched video (if any)
+    main_folder_clone.last_watched_video = last_watched_video;
+
+    // Continue with the update
+    update_os_videos(handle.clone(), os_videos)?;
+    update_os_folders(handle.clone(), vec![main_folder_clone])?;
 
     build_window(handle, Some(last_url.as_str()))?;
 
@@ -140,14 +199,77 @@ pub fn spawn_mpv(args: &[String], mpv_path: Option<String>) -> Result<Child, Mpv
     Ok(child)
 }
 
-fn extract_mpv_stdout_path(stdout: Vec<u8>) -> Option<String> {
-    let output_str = String::from_utf8(stdout).ok()?;
+fn parse_mpv_stdout(stdout: Vec<u8>) -> Result<Vec<MpvPlaybackData>, MpvStdoutError> {
+    let output_str = String::from_utf8(stdout)?;
 
-    for line in output_str.lines().rev() {
-        if let Some(stripped) = line.strip_prefix("Playing: ") {
-            return Some(stripped.to_string());
+    // Split the output by the keyword "Playing", which indicates the start of each new part
+    let parts: Vec<String> = output_str
+        .split("Playing")
+        .skip(1) // skip the first part before the first "Playing"
+        .map(|part| format!("Playing{}", part.trim())) // re-add the "Playing" to each part
+        .collect();
+
+    // Process each part in parallel
+    let data: Result<Vec<MpvPlaybackData>, MpvStdoutError> = parts
+        .into_par_iter() // Parallel iteration
+        .map(|part| {
+            // Handle each part, and propagate errors correctly using Result
+            handle_mpv_stdout_section(part)
+        })
+        .collect(); // Collect the results into a Result<Vec<_>, _>
+
+    data
+}
+
+fn handle_mpv_stdout_section(sect: String) -> Result<MpvPlaybackData, MpvStdoutError> {
+    //println!("\n{sect}\n");
+    let mut data = MpvPlaybackData::new();
+    let mut found_path = false;
+    let mut found_timestamp = false;
+
+    // First find the path since it's at the start
+    for line in sect.lines() {
+        if let Some(path) = line.strip_prefix("Playing: ") {
+            data.last_video_path = normalize_path(path).to_string_lossy().to_string();
+            found_path = true;
+            break;
         }
     }
 
-    None
+    // Then find the last actual timestamp (going backwards)
+    for line in sect.lines().rev() {
+        if line.starts_with("Exiting...") || line.starts_with("Saving state.") {
+            continue; // Skip these lines as they might appear after the final timestamp
+        }
+        if let Some(whole_duration) = line.strip_prefix("AV: ") {
+            let parts: Vec<&str> = whole_duration.split('/').map(str::trim).collect();
+            if parts.len() >= 2 {
+                if let Some((duration, _)) = parts[1].split_once("(") {
+                    data.update_timestamp(TimestampType::Position, parts[0].to_string())?;
+                    data.update_timestamp(TimestampType::Duration, duration.trim().to_string())?;
+                    found_timestamp = true;
+                    break; // Stop after finding the first (last) valid timestamp
+                }
+            }
+        }
+    }
+
+    if !found_path {
+        return Err(MpvStdoutError::MissingVideoTitle(sect));
+    }
+
+    // handle the edge case where path is found but timestamp isn't
+    // this only seems to happen when you finish watching a video that has a timestamp-
+    // and then exit mpv on the video that plays after
+    if !found_timestamp {
+        // Set default values for already watched videos
+        data.update_timestamp(TimestampType::Position, "00:10:00".to_string())?;
+        data.update_timestamp(TimestampType::Duration, "00:10:00".to_string())?;
+        println!(
+            "Warning: No timestamp found for '{}', using default values.",
+            data.last_video_path
+        );
+    }
+
+    Ok(data)
 }
