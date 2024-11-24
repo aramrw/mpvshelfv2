@@ -7,6 +7,7 @@ import { IconReload } from "@tabler/icons-solidjs";
 import IconHeroEye from "../../main-components/icons/icon-hero-eye";
 import VideoCardContextMenu from "./video-cm";
 import { Platform } from "@tauri-apps/plugin-os";
+import { VideoDescription } from "../../main-components/description/video-desc";
 
 function splitFileName(title: string): [string, string] | [string] {
   const lastDotIndex = title.lastIndexOf(".");
@@ -76,45 +77,34 @@ const LibraryVideoCard = ({
             </div>
 
             {/* Hover Overlay for Extended Description */}
+            <VideoDescription
+              video={() => video}
+            />
+
+            {/* Duration Bar */}
             <div
-              class="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-200
-                        flex items-center justify-center text-white p-4 z-20"
-            >
-              <p
-                class="text-sm font-medium absolute left-2 top-2 text text-zinc-100 bg-transparent
-												 mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5"
-              >
-                {video.title}
-              </p>
-              <p
-                class="text-[12px] font-medium absolute left-2 bottom-2 text text-zinc-300 bg-transparent
-												mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5"
-              >
-                {video.update_date}
-              </p>
-              <p
-                class="text-[13px] font-medium absolute left-2 bottom-6 text text-zinc-300 bg-transparent
-												mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5"
-              >
-                {video.update_time}
-              </p>
-            </div>
+              class="w-full h-3 absolute left-0 top-0 bg-primary/50 
+							group-hover:opacity-0 transition-all duration-200"
+            />
+            {/* Position Bar with blurred background */}
+            <div
+              class="h-3 absolute left-0 top-0 bg-secondary mix-blend-difference backdrop-blur-md
+							group-hover:opacity-0 transition-all duration-200"
+              style={{
+                width: `${calcTimestampAvg(video.position, video.duration)}%`
+              }}
+            />
 
             {/* Video Title at Bottom */}
-            <div
-              class="h-fit absolute left-0 bottom-0 bg-primary/80
-												border-t-2 border-t-secondary/10 shadow-md
-                        text-border text-xs p-1 mix-blend-plus-darker group-hover:opacity-0 transition-opacity duration-300"
+            <h1
+              class="w-fit h-full text-md lg:text-lg xl:text-xl absolute left-0 top-0 bg-primary/80 font-semibold
+								border-r-4 border-r-secondary/10 shadow-sm shadow-black/50 text-nowrap
+								text-border p-1 pl-1.5 backdrop-blur-sm mix-blend-plus-darker
+								group-hover:opacity-90 transition-all duration-300 will-change-auto
+								[writing-mode:vertical-rl] [text-orientation:upright] [letter-spacing:-0.1em]"
             >
-              <h1 class="font-medium pointer-events-none select-none">
-                <Show when={video.watched} fallback={splitTitle[0]}>
-                  <div class="flex flex-row gap-1 text-muted/60">
-                    {splitTitle[0]}
-                    <IconHeroEye class="h-4 text-muted/80" />
-                  </div>
-                </Show>
-              </h1>
-            </div>
+              {video.title}
+            </h1>
 
             {/* Play Icon */}
             <Show
@@ -151,4 +141,10 @@ const LibraryVideoCard = ({
   );
 };
 
+export const calcTimestampAvg = (pos: number, dur: number) => {
+  return (pos / dur) * 100;
+}
+
 export default LibraryVideoCard;
+
+
