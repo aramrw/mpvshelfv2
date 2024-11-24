@@ -23,6 +23,7 @@ const OsFolderCard = ({
 ) => {
   const currentPlatform = platform();
   const navigate = useNavigate();
+  console.log(folder);
 
   return (
     <Transition
