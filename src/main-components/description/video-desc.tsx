@@ -4,6 +4,7 @@ import { OsVideo } from "../../models";
 
 interface VideoDescProps {
   video: () => OsVideo | null;
+  onClick: () => void;
 }
 
 export const VideoDescription: Component<VideoDescProps> = (props) => {
@@ -52,6 +53,7 @@ export const VideoDescription: Component<VideoDescProps> = (props) => {
   return (
     <div
       class="absolute inset-0 z-50 h-full w-full max-w-full bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-start justify-between text-white px-2.5 py-1.5 backdrop-blur-sm select-none cursor-pointer"
+      onClick={props.onClick}
     >
       {/* OS video Section */}
       <div class="flex flex-col w-full">
