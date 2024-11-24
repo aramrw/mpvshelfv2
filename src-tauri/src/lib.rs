@@ -2,6 +2,7 @@
 
 use database::init_database;
 use tauri::Manager;
+use tray::kill_dup_process;
 
 mod database;
 mod error;
@@ -15,7 +16,10 @@ use crate::database::{
     get_os_folders_by_path, get_os_videos, get_user_by_id, update_os_folders, update_os_videos,
     update_user,
 };
-use crate::fs::{check_cover_img_exists, download_mpv_binary, read_os_folder_dir, show_in_folder};
+use crate::fs::{
+    check_cover_img_exists, download_mpv_binary, read_os_folder_dir, show_in_folder,
+    upsert_read_os_dir,
+};
 use crate::mpv::{mpv_system_check, play_video};
 use crate::tray::init_tray;
 
@@ -29,6 +33,7 @@ pub fn run() {
             let handle = app.handle();
             let app_data_dir = handle.path().app_data_dir().unwrap();
             init_database(&app_data_dir, handle).unwrap();
+            kill_dup_process();
             init_tray(app).unwrap();
             Ok(())
         })
@@ -49,6 +54,7 @@ pub fn run() {
             mpv_system_check,
             play_video,
             download_mpv_binary,
+            upsert_read_os_dir,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
