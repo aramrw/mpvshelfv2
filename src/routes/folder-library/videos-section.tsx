@@ -42,7 +42,7 @@ export default function LibraryVideosSection({
                   currentPlatform={currentPlatform}
                   mutate={mutate}
                   onClick={async () => {
-                    const error = await play_video(mainParentFolder()!, video, user()!);
+                    const error = await play_video(mainParentFolder()!, osVideos()!, video, user()!);
                     if (error) {
                       setError(null);
                       setError(error);
