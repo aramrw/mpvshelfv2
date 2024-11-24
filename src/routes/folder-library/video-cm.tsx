@@ -59,7 +59,7 @@ export default function VideoCardContextMenu({
     });
 
     // Optional: Call an update function for the backend if needed
-    update_os_videos(beUpdatedVideos.slice(0, upToIndex + 1));
+    update_os_videos(beUpdatedVideos);
   };
 
   return (
