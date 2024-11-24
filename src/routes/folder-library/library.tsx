@@ -16,10 +16,14 @@ import upsert_read_os_dir from "../../tauri-cmds/upsert_read_os_dir";
 export default function Library() {
   const params = useParams();
   const folderPath = () => (decodeURIComponent(params.folder).replace(/\)$/, ""));
-  const [mainParentFolder] = createResource(folderPath, get_os_folder_by_path);
-  const [user] = createResource(() => (mainParentFolder() ? mainParentFolder()?.user_id : null), get_user_by_id);
-  const [osVideos, { mutate, refetch: refetchChildVideos }] = createResource(() => (mainParentFolder() ? mainParentFolder()?.path : null), get_os_videos);
-  const [childFolders, { refetch: refetchChildFolders }] = createResource(() => (mainParentFolder() ? mainParentFolder()?.path : null), get_os_folders_by_path);
+  const [mainParentFolder] =
+    createResource(folderPath, get_os_folder_by_path);
+  const [user] =
+    createResource(() => (mainParentFolder() ? mainParentFolder()?.user_id : null), get_user_by_id);
+  const [osVideos, { mutate, refetch: refetchChildVideos }] =
+    createResource(() => (mainParentFolder() ? mainParentFolder()?.path : null), get_os_videos);
+  const [childFolders, { refetch: refetchChildFolders }] =
+    createResource(() => (mainParentFolder() ? mainParentFolder()?.path : null), get_os_folders_by_path);
   const [hasInitialized, setHasInitialized] = createSignal(false);
 
   createEffect(async () => {
