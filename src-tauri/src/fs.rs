@@ -4,6 +4,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 //use std::time::Instant;
 use futures_util::TryStreamExt;
+use hashbrown::HashMap;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelBridge,
 };
@@ -12,10 +13,10 @@ use std::{env, fs, io};
 use std::{fs::read_dir, process::Command};
 use tokio::io::AsyncWriteExt;
 
-use crate::database::data::v1::OsVideo;
+use crate::database::data::v1::{OsVideo, OsVideoKey};
 use crate::database::{data::v1::OsFolder, update_os_folders};
 use crate::database::{delete_os_folders, delete_os_videos, update_os_videos};
-use crate::error::{MpvError, MpvShelfError, ReadDirError};
+use crate::error::{DatabaseError, MpvError, MpvShelfError, ReadDirError};
 use crate::misc::get_date_time;
 use crate::mpv::EPISODE_TITLE_REGEX;
 use rayon::iter::ParallelIterator;
@@ -43,10 +44,26 @@ pub static SUPPORTED_SUBTITLE_FORMATS: phf::Set<&'static str> = phf_set! {
     "srt", "ass", "ssa", "sub", "idx", "vtt", "lrc",
 };
 
+trait Pushable {
+    fn push(&mut self, value: String);
+}
+
+impl Pushable for Vec<String> {
+    fn push(&mut self, value: String) {
+        self.push(value);
+    }
+}
+
+impl Pushable for HashSet<String> {
+    fn push(&mut self, value: String) {
+        self.insert(value);
+    }
+}
+
 fn read_dir_helper(
     path: &str,
-    child_folder_paths: &mut Vec<String>,
-    video_file_paths: &mut Vec<String>,
+    child_folder_paths: &mut impl Pushable,
+    video_file_paths: &mut impl Pushable,
 ) -> Result<(), io::Error> {
     for entry in read_dir(path)? {
         let entry = entry?;
@@ -68,149 +85,281 @@ fn read_dir_helper(
     Ok(())
 }
 
+type FolderGroup = (OsFolder, Vec<OsFolder>, Vec<OsVideo>);
+
+fn delete_stale_entries(
+    handle: AppHandle,
+    old_dirs: Vec<OsFolder>,
+    old_panels: Vec<OsVideo>,
+) -> Result<(), DatabaseError> {
+    delete_os_folders(handle.clone(), old_dirs)?;
+    delete_os_videos(&handle, old_panels)?;
+    Ok(())
+}
+
+pub trait HasPath {
+    fn path(&self) -> &str;
+}
+
+fn normalize_path_to_unix(path: impl AsRef<str>) -> String {
+    path.as_ref().to_lowercase().replace('\\', "/") // Normalize case and separators.
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+pub enum StaleEntries {
+    Found {
+        dirs: Option<HashSet<String>>,
+        videos: Option<HashSet<String>>,
+        deleted: Option<(Vec<OsFolder>, Vec<OsVideo>)>,
+    },
+    None,
+}
+
+impl StaleEntries {
+    pub fn is_none(&self) -> bool {
+        matches!(self, StaleEntries::None)
+    }
+}
+
+fn find_missing_paths<'a, O, I>(old: &[O], new: I) -> Option<HashSet<String>>
+where
+    O: HasPath,
+    I: Iterator<Item = &'a String>,
+{
+    // Normalize old paths and collect them into a set.
+    let old_paths: HashSet<String> = old.iter().map(|x| x.path().to_string()).collect();
+
+    // Normalize new paths and collect them into a set.
+    let new_paths: HashSet<String> = new.cloned().collect();
+
+    // Find paths missing in the new set (deletions) and paths missing in the old set (additions).
+    let missing: HashSet<String> = old_paths
+        .difference(&new_paths) // Paths in old but not in new (deletions).
+        .chain(new_paths.difference(&old_paths)) // Paths in new but not in old (additions).
+        .cloned()
+        .collect();
+
+    // Return `None` if there are no missing paths, otherwise return the set.
+    if missing.is_empty() {
+        None
+    } else {
+        Some(missing)
+    }
+}
+
+fn find_stale_metadata(
+    old: &[OsVideo],
+    new: &HashSet<String>, // new is directly a HashSet<String>
+) -> Option<HashSet<String>> {
+    // Build a map of old videos for easy lookup by path.
+    let old_map: HashMap<&str, &OsVideo> = old.iter().map(|p| (p.path.as_str(), p)).collect();
+
+    // Start with an empty set to store stale or missing paths.
+    let mut result: HashSet<String> = HashSet::new();
+
+    // Iterate over new video paths to check both missing and stale metadata.
+    new.iter().for_each(|new_path| {
+        // Check if the video exists in the old set.
+        if let Some(old_video) = old_map.get(new_path.as_str()) {
+            // Check if the video's metadata is stale.
+            if old_video.is_stale_metadata() {
+                result.insert(new_path.clone()); // Add to result if metadata is stale.
+            }
+        } else {
+            result.insert(new_path.clone()); // Add missing video to result (video was added).
+        }
+    });
+
+    // Also check for any videos that were in `old` but not in `new` (deleted videos).
+    old.iter().for_each(|old_video| {
+        // If a video in `old` is missing from `new`, consider it missing.
+        if !new.contains(old_video.path()) {
+            result.insert(old_video.path().to_string());
+        }
+    });
+
+    // Return the result if not empty, otherwise None.
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
+}
+
+fn find_stale_entries(
+    main_dir: &str,
+    old_dirs: Option<&mut Vec<OsFolder>>,
+    old_videos: Option<&mut Vec<OsVideo>>,
+) -> Result<StaleEntries, ReadDirError> {
+    // Collect new directories and videos from the filesystem.
+    let mut new_dirs = HashSet::new();
+    let mut new_videos = HashSet::new();
+    read_dir_helper(main_dir, &mut new_dirs, &mut new_videos)?;
+
+    // If both old_dirs and old_videos are None, this is a fresh scan (no previous entries).
+    if old_dirs.is_none() && old_videos.is_none() {
+        return Ok(StaleEntries::None);
+    }
+
+    let old_dirs = match old_dirs {
+        Some(dirs) => dirs,
+        None => &mut Vec::new(),
+    };
+
+    let old_videos = match old_videos {
+        Some(videos) => videos,
+        None => &mut Vec::new(),
+    };
+
+    // Filter out missing videos (deleted videos)
+    let deleted_videos: Vec<OsVideo> = old_videos
+        .iter()
+        .filter_map(|pan| {
+            if !path_exists(&pan.path) {
+                return Some(pan.clone());
+            }
+            None
+        })
+        .collect();
+
+    // Filter out missing directories (deleted dirs)
+    let deleted_dirs: Vec<OsFolder> = old_dirs
+        .iter()
+        .filter_map(|dir| {
+            if !path_exists(&dir.path) {
+                return Some(dir.clone());
+            }
+            None
+        })
+        .collect();
+
+    // Remove deleted videos and dirs from old_dirs and old_videos
+    old_dirs.retain(|dir| !deleted_dirs.iter().any(|del| del.path == dir.path));
+    old_videos.retain(|video| !deleted_videos.iter().any(|del| del.path == video.path));
+
+    // Find missing paths (stale directories) and videos
+    let dirs = find_missing_paths(old_dirs, new_dirs.iter());
+    let videos = find_stale_metadata(old_videos, &new_videos);
+
+    // Return the found stale entries, including deleted items
+    match (
+        &dirs,
+        &videos,
+        deleted_dirs.is_empty() && deleted_videos.is_empty(),
+    ) {
+        (None, None, true) => Ok(StaleEntries::None),
+        _ => Ok(StaleEntries::Found {
+            dirs,
+            videos,
+            deleted: Some((deleted_dirs, deleted_videos)),
+        }),
+    }
+}
+
 #[command]
 pub fn upsert_read_os_dir(
     handle: AppHandle,
     dir: String,
     parent_path: Option<String>,
     user_id: String,
-    c_folders: Option<Vec<OsFolder>>,
-    c_videos: Option<Vec<OsVideo>>,
+    mut old_dirs: Option<Vec<OsFolder>>,
+    mut old_videos: Option<Vec<OsVideo>>,
 ) -> Result<bool, MpvShelfError> {
-    let mut del_cf: Vec<OsFolder> = Vec::new();
-    let mut del_v: Vec<OsVideo> = Vec::new();
+    // Find stale entries based on the provided directory and old data.
+    let mut stale_entries = find_stale_entries(&dir, old_dirs.as_mut(), old_videos.as_mut())?;
+    //println!("stale_entries: {:#?}", stale_entries);
 
-    if let Some(c_folders) = &c_folders {
-        //println!("| c_folders_length: {}", c_folders.len());
-        for sf in c_folders {
-            if !Path::new(&sf.path).exists() {
-                del_cf.push(sf.clone())
-            }
+    // If there are no stale entries and either `old_dirs` or `old_videos` is provided,
+    // return `false` to prevent unnecessary re-rendering.
+    if (old_dirs.is_some() || old_videos.is_some()) && stale_entries.is_none() {
+        return Ok(false);
+    }
+
+    if let StaleEntries::Found {
+        ref mut deleted, ..
+    } = stale_entries
+    {
+        if let Some(deleted_entries) = deleted.take() {
+            // Only move the deleted entries.
+            delete_stale_entries(handle.clone(), deleted_entries.0, deleted_entries.1)?;
         }
     }
 
-    if let Some(c_videos) = &c_videos {
-        //println!("| c_videos_length: {}", c_videos.len());
-
-        for sv in c_videos {
-            if !Path::new(&sv.path).exists() {
-                del_v.push(sv.clone())
-            }
+    if let StaleEntries::Found { dirs, videos, .. } = &stale_entries {
+        if dirs.is_none() && videos.is_none() {
+            stale_entries = StaleEntries::None
         }
     }
 
-    let group = match read_os_folder_dir(
-        handle.clone(),
-        dir,
-        user_id,
-        None,
-        parent_path,
-        c_folders,
-        c_videos,
-    ) {
-        Ok(g) => g,
-        Err(ReadDirError::FullyHydrated(_)) => return Ok(false),
-        Err(e) => return Err(MpvShelfError::ReadDir(e)),
-    };
+    let (main_folder, mut new_cfs, panels) =
+        read_os_folder_dir(&handle, dir, user_id, None, parent_path, stale_entries)?;
 
-    let (main_folder, mut new_cfs, new_vids) = group;
-    let cover_img = &main_folder.cover_img_path.clone();
-
-    if !del_cf.is_empty() {
-        delete_os_folders(handle.clone(), del_cf)?;
-    }
-    if !del_v.is_empty() {
-        delete_os_videos(&handle, del_v)?;
-    }
-
+    // Update panels and folders with the new data.
+    update_os_videos(handle.clone(), panels)?;
     new_cfs.push(main_folder);
-    update_os_folders(handle.clone(), new_cfs)?;
-    update_os_videos(handle.clone(), new_vids)?;
+    update_os_folders(handle, new_cfs)?;
 
-    let now = Instant::now();
-    if let Some(path) = cover_img {
-        while fs::metadata(path).is_err() {
-            if now.elapsed() >= Duration::from_millis(5000) {
-                break;
-            } else {
-                sleep(Duration::from_millis(100));
-            }
-        }
-    }
+    // Indicate whether a refetch was performed.
     Ok(true)
 }
 
-type FolderGroup = (OsFolder, Vec<OsFolder>, Vec<OsVideo>);
-
-#[command]
 pub fn read_os_folder_dir(
-    handle: AppHandle,
+    handle: &AppHandle,
     path: String,
     user_id: String,
     update_datetime: Option<(String, String)>,
     parent_path: Option<String>,
-    c_folders: Option<Vec<OsFolder>>,
-    c_videos: Option<Vec<OsVideo>>,
+    stale_entries: StaleEntries,
 ) -> Result<FolderGroup, ReadDirError> {
-    let mut child_folder_paths: Vec<String> = Vec::new();
-    let mut video_file_paths: Vec<String> = Vec::new();
-    let mut update_datetime = update_datetime;
-    let app_data_dir = handle.path().app_data_dir()?;
+    let mut childfolder_paths = HashSet::new();
+    let mut video_paths = HashSet::new();
+    read_dir_helper(&path, &mut childfolder_paths, &mut video_paths)?;
 
-    read_dir_helper(&path, &mut child_folder_paths, &mut video_file_paths)?;
+    let parent_path = parent_path.is_some().then(|| {
+        Path::new(&path)
+            .parent()
+            .unwrap()
+            .to_string_lossy()
+            .to_string()
+    });
 
-    if child_folder_paths.is_empty() && video_file_paths.is_empty() {
+    if childfolder_paths.is_empty() && video_paths.is_empty() {
         return Err(ReadDirError::Io(io::Error::new(
             io::ErrorKind::NotFound,
             format!("{path} contains 0 supported files."),
         )));
-    } else if let Some(ref c_videos) = c_videos {
-        if video_file_paths.len() == c_videos.len() {
-            if let Some(ref c_folders) = c_folders {
-                if child_folder_paths.len() == c_folders.len() {
-                    return Err(ReadDirError::FullyHydrated(path));
-                }
-            } else {
-                return Err(ReadDirError::FullyHydrated(path));
-            }
-        }
-    } else if let Some(ref c_folders) = c_folders {
-        if child_folder_paths.len() == c_folders.len() {
-            return Err(ReadDirError::FullyHydrated(path));
-        }
-    }
+    } else {
+        // Only filter if stale_entries is `Found`, otherwise process all paths.
+        if let StaleEntries::Found { dirs, videos, .. } = stale_entries {
+            let stale_dirs = dirs.unwrap_or_default();
+            let stale_videos = videos.unwrap_or_default();
 
+            // Filter out stale child folders that are not in the stale_dirs.
+            childfolder_paths = stale_dirs;
+
+            video_paths = stale_videos;
+        }
+        // If stale_entries is `None`, do nothing, no filtering occurs.
+    }
     let os_folder_path_clone = path.clone();
     let os_folder = Path::new(&os_folder_path_clone);
-    if update_datetime.is_none() {
-        let (update_date, update_time) = get_date_time();
-        update_datetime = Some((update_date, update_time));
-    }
-
-    let update_date = update_datetime.clone().unwrap().0;
-    let update_time = update_datetime.clone().unwrap().1;
+    let (update_date, update_time) = update_datetime.clone().unwrap_or_else(get_date_time);
+    let app_data_dir = handle.path().app_data_dir()?;
 
     let mut total_child_folders: Vec<OsFolder> = Vec::new();
     let mut total_videos: Vec<OsVideo> = Vec::new();
-    let c_videos_paths: Option<HashSet<String>> =
-        c_videos.map(|videos| videos.into_iter().map(|os_video| os_video.path).collect());
-
-    let mut current_folder_videos: Vec<OsVideo> = video_file_paths
-        .into_par_iter()
+    let current_folders_videos: Vec<OsVideo> = video_paths
+        .into_iter()
         .enumerate()
-        .filter_map(|(i, vid_path)| {
-            if let Some(ref paths) = c_videos_paths {
-                if paths.contains(&vid_path) {
-                    return None;
-                }
-            }
-            create_os_video(
-                &handle,
+        .filter_map(|(index, video_path)| {
+            OsVideo::new(
+                handle,
                 user_id.clone(),
-                parent_path.as_ref(),
+                parent_path.clone(),
                 path.clone(),
-                vid_path,
-                i + 3,
+                video_path,
+                index + 3,
                 update_date.clone(),
                 update_time.clone(),
                 &app_data_dir,
@@ -218,23 +367,9 @@ pub fn read_os_folder_dir(
             .ok()
         })
         .collect::<Vec<OsVideo>>();
+    total_videos.extend(current_folders_videos);
 
-    let mut first_video: Option<OsVideo> = None;
-    if let Some(mut first_vid) = current_folder_videos.first().cloned() {
-        let new_cover_img_path =
-            join_cover_img_path(parent_path.as_ref(), &path, &first_vid.path, &app_data_dir)?;
-        call_ffmpeg_sidecar(
-            &handle,
-            None,
-            &first_vid.path,
-            Path::new(&new_cover_img_path),
-        )
-        .unwrap();
-        first_vid.cover_img_path = Some(new_cover_img_path);
-        first_video = Some(first_vid);
-    }
-
-    current_folder_videos.par_sort_by(|a, b| {
+    total_videos.par_sort_by(|a, b| {
         // Extract the episode number from the title using regex
         let num_a = EPISODE_TITLE_REGEX
             .captures(&a.title)
@@ -250,55 +385,38 @@ pub fn read_os_folder_dir(
 
         num_a.cmp(&num_b)
     });
-    total_videos.extend(current_folder_videos);
 
-    let child_folder_groups: Vec<FolderGroup> = child_folder_paths
+    let first_video = total_videos.first().cloned();
+    //println!("first_video: {:?}", first_video); // Debug statement
+    let mut cover_img = first_video.as_ref().and_then(|p| p.cover_img_path.clone());
+
+    let child_folders_group: Vec<FolderGroup> = childfolder_paths
         .into_par_iter()
         .filter_map(|folder_path| {
             read_os_folder_dir(
-                handle.clone(),
+                handle,
                 folder_path,
                 user_id.clone(),
                 update_datetime.clone(),
                 Some(path.clone()),
-                None,
-                None,
+                StaleEntries::None,
             )
             .ok()
         })
         .collect();
 
-    for group in child_folder_groups.into_iter() {
+    for group in child_folders_group.into_iter() {
         let (folder, c_folders, g_videos) = group;
+        total_videos.extend(g_videos);
 
-        if first_video.is_none() {
-            if let Some(mut first_vid) = g_videos.first().cloned() {
-                let new_cover_img_path = join_cover_img_path(
-                    parent_path.as_ref(),
-                    &path,
-                    &first_vid.path,
-                    &app_data_dir,
-                )?;
-                call_ffmpeg_sidecar(
-                    &handle,
-                    None,
-                    &first_vid.path,
-                    Path::new(&new_cover_img_path),
-                )
-                .unwrap();
-                first_vid.cover_img_path = Some(new_cover_img_path);
-                first_video = Some(first_vid);
+        if cover_img.is_none() {
+            if let Some(ref cover_img_path) = folder.cover_img_path {
+                cover_img = Some(cover_img_path.to_string());
             }
         }
 
         total_child_folders.push(folder);
         total_child_folders.extend(c_folders);
-        total_videos.extend(g_videos);
-    }
-
-    let mut cover_img_path = None;
-    if let Some(first_vid) = &first_video {
-        cover_img_path = first_vid.cover_img_path.clone();
     }
 
     let main_folder = OsFolder {
@@ -307,56 +425,12 @@ pub fn read_os_folder_dir(
         title: os_folder.file_name().unwrap().to_string_lossy().to_string(),
         parent_path,
         last_watched_video: first_video,
-        cover_img_path,
+        cover_img_path: cover_img,
         update_date,
         update_time,
     };
 
     Ok((main_folder, total_child_folders, total_videos))
-}
-
-fn create_os_video(
-    handle: &AppHandle,
-    user_id: String,
-    super_parent: Option<impl AsRef<str>>,
-    main_folder_path: String,
-    path: String,
-    index: usize,
-    update_date: String,
-    update_time: String,
-    app_data_dir: &Path,
-) -> Result<OsVideo, io::Error> {
-    let title =
-        Path::new(&path)
-            .file_name()
-            .ok_or_else(|| {
-                io::Error::new(
-        io::ErrorKind::InvalidInput,
-        format!("'{path}' contained invalid characters when trying get the the OsVideo title."),
-    )
-            })?
-            .to_string_lossy()
-            .to_string();
-
-    let cover_img_path = join_cover_img_path(super_parent, &main_folder_path, &path, app_data_dir)?;
-    if !check_cover_img_exists(&cover_img_path) {
-        call_ffmpeg_sidecar(handle, Some(index), &path, Path::new(&cover_img_path)).unwrap();
-    }
-
-    let vid = OsVideo {
-        user_id,
-        main_folder_path,
-        path,
-        title,
-        cover_img_path: Some(cover_img_path),
-        watched: false,
-        duration: 0,
-        position: 0,
-        update_date,
-        update_time,
-    };
-
-    Ok(vid)
 }
 
 #[command]
@@ -368,7 +442,7 @@ pub fn check_cover_img_exists(img_path: &str) -> bool {
     false
 }
 
-fn join_cover_img_path(
+pub fn join_cover_img_path(
     super_parent: Option<impl AsRef<str>>,
     parent: impl AsRef<str>,
     vid_path: impl AsRef<str>,
@@ -446,7 +520,7 @@ fn join_cover_img_path(
     Ok(cover_img_full_path)
 }
 
-fn call_ffmpeg_sidecar(
+pub fn call_ffmpeg_sidecar(
     handle: &AppHandle,
     index: Option<usize>,
     entry_path: impl AsRef<str>,
@@ -582,6 +656,11 @@ pub async fn download_mpv_binary(handle: AppHandle) -> Result<String, HttpClient
     }
 
     Ok(mpv_file_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn path_exists(path: &str) -> bool {
+    Path::exists(&PathBuf::from(path))
 }
 
 #[tauri::command]
