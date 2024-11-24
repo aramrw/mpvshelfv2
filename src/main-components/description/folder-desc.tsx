@@ -3,6 +3,7 @@ import { OsFolder } from "../../models";
 
 interface FolderDescriptionProps {
   folder: () => OsFolder | null;
+  onClick?: () => void;
 }
 
 export const FolderDescription: Component<FolderDescriptionProps> = (props) => {
@@ -45,7 +46,8 @@ export const FolderDescription: Component<FolderDescriptionProps> = (props) => {
   return (
     <div
       class="absolute inset-0 z-50 h-full w-full max-w-full bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-start justify-between text-white px-2.5 py-1.5 backdrop-blur-sm rounded-sm"
-    >      {/* OS Folder Section */}
+      onClick={props.onClick}
+    >
       <div class="flex flex-col w-full">
         <div class="text-wrap flex flex-row text-md xl:text-xl font-semibold text-zinc-100 bg-transparent mix-blend-difference z-10 shadow-2xl rounded-none px-0.5">
           {folder?.title}
