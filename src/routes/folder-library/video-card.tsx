@@ -54,7 +54,7 @@ const LibraryVideoCard = ({
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            class="max-w-[450px] h-56 cursor-pointer relative w-full border-[1.5px]
+            class="min-w-52 max-w-[450px] h-56 cursor-pointer relative w-full border-[1.5px]
 						border-transparent rounded-none shadow-black/30 shadow-md flex items-center
 						justify-center overflow-hidden will-change-transform transition-all group"
             onClick={onClick}
