@@ -9,7 +9,83 @@ use data::v1::{OsFolder, OsFolderKey, OsVideo, OsVideoKey, User};
 use native_db::*;
 use tauri::{command, AppHandle, Manager};
 
-use crate::{error::DatabaseError, misc::get_date_time, mpv::EPISODE_TITLE_REGEX};
+use crate::{
+    error::DatabaseError,
+    fs::{call_ffmpeg_sidecar, check_cover_img_exists, join_cover_img_path, HasPath},
+    misc::get_date_time,
+    mpv::EPISODE_TITLE_REGEX,
+};
+use serde::{Deserialize, Serialize};
+use std::time::{Duration, SystemTime};
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, Hash, PartialEq)]
+pub struct FileMetadata {
+    #[serde(
+        serialize_with = "serialize_system_time",
+        deserialize_with = "deserialize_system_time"
+    )]
+    pub created: Option<SystemTime>,
+
+    #[serde(
+        serialize_with = "serialize_system_time",
+        deserialize_with = "deserialize_system_time"
+    )]
+    pub modified: Option<SystemTime>,
+
+    #[serde(
+        serialize_with = "serialize_system_time",
+        deserialize_with = "deserialize_system_time"
+    )]
+    pub accessed: Option<SystemTime>,
+
+    pub size: Option<u64>,
+}
+
+impl FileMetadata {
+    // Constructor to get metadata of a file
+    pub fn from_path(path: impl AsRef<Path>) -> Option<Self> {
+        let metadata = std::fs::metadata(path).ok();
+
+        if let Some(metadata) = metadata {
+            let modified = metadata.modified().ok();
+            let created = metadata.created().ok();
+            let accessed = metadata.accessed().ok();
+            let size = Some(metadata.len());
+
+            return Some(Self {
+                modified,
+                created,
+                accessed,
+                size,
+            });
+        }
+
+        None
+    }
+}
+
+// Serialize SystemTime as u64 (seconds since epoch)
+fn serialize_system_time<S>(time: &Option<SystemTime>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match time {
+        Some(t) => {
+            let duration_since_epoch = t.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+            serializer.serialize_some(&duration_since_epoch.as_secs())
+        }
+        None => serializer.serialize_none(),
+    }
+}
+
+// Deserialize u64 back into SystemTime
+fn deserialize_system_time<'de, D>(deserializer: D) -> Result<Option<SystemTime>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let seconds: Option<u64> = Option::deserialize(deserializer)?;
+    Ok(seconds.map(|sec| SystemTime::UNIX_EPOCH + Duration::new(sec, 0)))
+}
 
 pub mod data {
     use native_db::{native_db, ToKey};
@@ -17,6 +93,8 @@ pub mod data {
     use serde::{Deserialize, Serialize};
 
     pub mod v1 {
+        use crate::database::FileMetadata;
+
         use super::*;
 
         #[derive(Serialize, Deserialize, Debug)]
@@ -63,8 +141,8 @@ pub mod data {
             /// * in seconds.
             /// `19:45:12` = `1185` min.
             pub duration: u64,
-            /// in seconds
             pub position: u64,
+            pub metadata: Option<FileMetadata>,
             pub update_date: String,
             pub update_time: String,
         }
@@ -114,7 +192,81 @@ impl OsFolder {
     }
 }
 
+impl HasPath for OsFolder {
+    fn path(&self) -> &str {
+        self.path.as_ref()
+    }
+}
+
+impl HasPath for OsVideo {
+    fn path(&self) -> &str {
+        self.path.as_ref()
+    }
+}
+
 impl OsVideo {
+    pub fn new(
+        handle: &AppHandle,
+        user_id: String,
+        super_parent: Option<impl AsRef<str>>,
+        main_folder_path: String,
+        path: String,
+        index: usize,
+        update_date: String,
+        update_time: String,
+        app_data_dir: &Path,
+    ) -> Result<OsVideo, io::Error> {
+        let title = Path::new(&path)
+            .file_name()
+            .ok_or_else(|| {
+                io::Error::new(
+        io::ErrorKind::InvalidInput,
+        format!("'{path}' contained invalid characters when trying get the the OsVideo title."),
+    )
+            })?
+            .to_string_lossy()
+            .to_string();
+
+        let metadata = FileMetadata::from_path(&path);
+
+        let cover_img_path =
+            join_cover_img_path(super_parent, &main_folder_path, &path, app_data_dir)?;
+        if !check_cover_img_exists(&cover_img_path) {
+            call_ffmpeg_sidecar(handle, Some(index), &path, Path::new(&cover_img_path)).unwrap();
+        }
+
+        let vid = OsVideo {
+            user_id,
+            main_folder_path,
+            path,
+            title,
+            cover_img_path: Some(cover_img_path),
+            watched: false,
+            duration: 0,
+            position: 0,
+            metadata,
+            update_date,
+            update_time,
+        };
+
+        Ok(vid)
+    }
+
+    pub fn is_stale_metadata(&self) -> bool {
+        if let Some(ref current_metadata) = self.metadata {
+            // Fetch the current metadata of the file
+            match FileMetadata::from_path(&self.path) {
+                Some(new_metadata) => {
+                    // Compare the modified time and size
+                    current_metadata.size != new_metadata.size
+                }
+                None => true, // If metadata can't be fetched, assume it's stale
+            }
+        } else {
+            true // If no metadata is stored, consider it stale
+        }
+    }
+
     fn _delete_cover_img(&self) -> io::Result<()> {
         if let Some(path) = &self.cover_img_path {
             remove_file(path)?
