@@ -108,6 +108,12 @@ export default function ({
               </svg>
               <VideoDescription
                 video={() => mainParentFolder()?.last_watched_video!}
+                onClick={async () => await play_video(
+                  mainParentFolder()!,
+                  osVideos()!,
+                  mainParentFolder()?.last_watched_video!,
+                  user()!
+                )}
               />
             </Show>
           </div>
