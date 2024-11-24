@@ -10,7 +10,7 @@ import {
 } from "../../components/ui/context-menu";
 import { Platform } from "@tauri-apps/plugin-os";
 import show_in_folder from "../../tauri-cmds/show_in_folder";
-import { IconFolderSearch } from "@tabler/icons-solidjs";
+import { IconChevronDown, IconChevronUp, IconFolderSearch } from "@tabler/icons-solidjs";
 import IconHeroEye from "../../main-components/icons/icon-hero-eye";
 import { update_os_videos } from "../../tauri-cmds/update_os_videos";
 import IconHeroSlashEye from "../../main-components/icons/icon-hero-slasheye";
@@ -59,7 +59,7 @@ export default function VideoCardContextMenu({
     });
 
     // Optional: Call an update function for the backend if needed
-    update_os_videos(beUpdatedVideos.slice(0, upToIndex + 1));
+    update_os_videos(beUpdatedVideos);
   };
 
   return (
@@ -116,12 +116,20 @@ export default function VideoCardContextMenu({
               <IconHeroEye class="h-auto w-4" />
             </Show>
           </ContextMenuItem>
-
-          <ContextMenuItem class="flex flex-row items-center justify-between" onClick={() => toggleWatchStatus(true, index())}>
-            Watch to Here
-          </ContextMenuItem>
+          <ContextMenuSeparator />
           <ContextMenuItem class="flex flex-row items-center justify-between" onClick={() => toggleWatchStatus(false, index())}>
-            Unwatch to Here
+            Unwatch to
+            <div class="flex flex-row justify-center items-center w-fit gap-1">
+              <IconChevronUp class="h-auto w-4" />
+              <IconHeroSlashEye class="h-auto w-4" />
+            </div>
+          </ContextMenuItem>
+          <ContextMenuItem class="flex flex-row items-center justify-between" onClick={() => toggleWatchStatus(true, index())}>
+            Watch to
+            <div class="flex flex-row justify-center items-center w-fit gap-1">
+              <IconChevronDown class="h-auto w-4" />
+              <IconHeroEye class="h-auto w-4" />
+            </div>
           </ContextMenuItem>
         </ContextMenuSubContent>
       </ContextMenuSub>

@@ -22,7 +22,7 @@ import { open as openShell } from "@tauri-apps/plugin-shell";
 import { open } from "@tauri-apps/plugin-dialog";
 import { UserType } from "../../../models";
 import { appDataDir as getAppDataDir, join } from '@tauri-apps/api/path';
-import { Accessor, createEffect, createResource, createSignal, onCleanup, onMount, Setter, Show } from "solid-js";
+import { Accessor, createResource, createSignal, onCleanup, onMount, Setter, Show } from "solid-js";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -32,14 +32,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-  AlertDialogAction
 } from "../../../components/ui/alert-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import { emit, listen, UnlistenFn } from '@tauri-apps/api/event'
-import { cn } from "../../../libs/cn";
+import { listen, UnlistenFn } from '@tauri-apps/api/event'
 import Spinner from "../../../main-components/icons/spinner";
 import update_user from "../../../tauri-cmds/update-user";
-import { exists } from "@tauri-apps/plugin-fs";
 
 
 export default function MpvTabSection({ user }: { user: UserType }) {
@@ -233,7 +230,7 @@ function DownloadMpvAlertDialog({
                   </span>
                 </>
               }>
-                mpv shelf can download, install, & manage mpv for you.
+                mpvshelf can download, install, & manage mpv for you.
                 <br />
                 <span class="text-primary">How would you like to continue?</span>
               </Show>

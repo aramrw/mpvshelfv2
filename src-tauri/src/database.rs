@@ -1,7 +1,7 @@
 use std::{
-    fs::{create_dir, remove_file},
+    fs::{self, create_dir, remove_file},
     io,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::LazyLock,
 };
 
@@ -41,7 +41,6 @@ pub mod data {
             pub title: String,
             #[secondary_key]
             pub parent_path: Option<String>,
-            pub os_videos: Vec<OsVideo>,
             pub last_watched_video: Option<OsVideo>,
             pub cover_img_path: Option<String>,
             pub update_date: String,
@@ -61,6 +60,11 @@ pub mod data {
             pub title: String,
             pub cover_img_path: Option<String>,
             pub watched: bool,
+            /// * in seconds.
+            /// `19:45:12` = `1185` min.
+            pub duration: u64,
+            /// in seconds
+            pub position: u64,
             pub update_date: String,
             pub update_time: String,
         }
@@ -104,8 +108,14 @@ pub fn init_database(app_data_dir: &PathBuf, handle: &AppHandle) -> Result<(), d
     Ok(())
 }
 
+impl OsFolder {
+    pub fn get_appdata_frames_folder(&self, app_data_dir: &Path) -> PathBuf {
+        app_data_dir.join("frames").join(&self.title)
+    }
+}
+
 impl OsVideo {
-    pub fn delete_cover_img(&self) -> io::Result<()> {
+    fn _delete_cover_img(&self) -> io::Result<()> {
         if let Some(path) = &self.cover_img_path {
             remove_file(path)?
         }
@@ -126,8 +136,6 @@ pub fn get_os_folders(handle: AppHandle, user_id: String) -> Result<Vec<OsFolder
         .try_collect()?;
 
     folders.retain(|folder| folder.parent_path.is_none());
-
-    //println!("folders = {:#?}", folders);
 
     if folders.is_empty() {
         return Err(DatabaseError::OsFoldersNotFound(format!(
@@ -275,16 +283,67 @@ pub fn delete_os_folders(
     handle: AppHandle,
     os_folders: Vec<OsFolder>,
 ) -> Result<(), DatabaseError> {
+    let app_data_dir = handle.path().app_data_dir()?;
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().open(&DBMODELS, db_path)?;
 
     let rwtx = db.rw_transaction()?;
 
     for folder in os_folders {
-        for vid in &folder.os_videos {
-            vid.delete_cover_img()?;
+        let child_folders: Vec<OsFolder> = rwtx
+            .scan()
+            .secondary(OsFolderKey::parent_path)?
+            .start_with(Some(folder.path.as_str()))?
+            .try_collect()?;
+
+        let videos: Vec<OsVideo> = rwtx
+            .scan()
+            .secondary(OsVideoKey::main_folder_path)?
+            .start_with(folder.path.as_str())?
+            .try_collect()?;
+
+        for vid in videos {
+            rwtx.remove(vid)?;
         }
+
+        for cf in child_folders {
+            rwtx.remove(cf)?;
+        }
+
+        // removes the frames folder
+        if let Err(e) = fs::remove_dir_all(folder.get_appdata_frames_folder(&app_data_dir)) {
+            if e.kind() != io::ErrorKind::NotFound {
+                return Err(DatabaseError::IoError(e));
+            }
+        }
+
         rwtx.remove(folder)?;
+    }
+
+    rwtx.commit()?;
+
+    Ok(())
+}
+
+pub fn delete_os_videos(handle: &AppHandle, os_videos: Vec<OsVideo>) -> Result<(), DatabaseError> {
+    let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
+    let db = Builder::new().open(&DBMODELS, db_path)?;
+
+    let rwtx = db.rw_transaction()?;
+
+    for vid in os_videos {
+        let videos: Vec<OsVideo> = rwtx
+            .scan()
+            .secondary(OsVideoKey::main_folder_path)?
+            .start_with(vid.path.as_str())?
+            .try_collect()?;
+
+        for vid in videos {
+            vid._delete_cover_img()?;
+            rwtx.remove(vid)?;
+        }
+
+        rwtx.remove(vid)?;
     }
 
     rwtx.commit()?;
