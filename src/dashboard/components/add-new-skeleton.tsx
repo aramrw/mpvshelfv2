@@ -47,7 +47,7 @@ const AddNewSkeleton = ({
 							rounded-sm shadow-md bg-white" />
             <Show when={!isCreating()}
               fallback={
-                <IconLoader3 class="
+                <IconLoader2 class="
 							w-9 h-9 
 							sm:h-11 sm:w-11 
 							md:h-14 md:w-14 

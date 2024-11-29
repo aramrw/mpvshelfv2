@@ -4,7 +4,8 @@ import { OsVideo } from "../../models";
 
 interface VideoDescProps {
   video: () => OsVideo | null;
-  onClick: () => void;
+  onClick?: () => void;
+  className?: string;
 }
 
 export const VideoDescription: Component<VideoDescProps> = (props) => {
@@ -49,16 +50,26 @@ export const VideoDescription: Component<VideoDescProps> = (props) => {
   };
 
   let pos = formatPosition(video?.position, video?.duration);
+  let [title, ext] = getTitle(video?.title);
 
   return (
     <div
-      class="absolute inset-0 z-50 h-full w-full max-w-full bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-start justify-between text-white px-2.5 py-1.5 backdrop-blur-sm select-none cursor-pointer"
+      class={`absolute inset-0 z-50 h-full w-full max-w-full bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-start justify-between text-white px-2.5 py-1.5 backdrop-blur-sm select-none cursor-pointer ${props.className}`}
       onClick={props.onClick}
     >
       {/* OS video Section */}
       <div class="flex flex-col w-full">
-        <div class="break-all overflow-hidden flex-wrap text-md xl:text-xl font-semibold text-secondary bg-transparent mix-blend-difference z-10 shadow-2xl rounded-none px-0.5 select-none cursor-default">
-          {video?.title}
+        <div class="flex flex-row">
+          <p
+            class="text-xl font-semibold text-zinc-100 bg-transparent
+							mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5 underline">
+            {title}
+          </p>
+          <p
+            class="text-[13px] font-medium text-zinc-300 bg-transparent
+							mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5">
+            .{ext}
+          </p>
         </div>
         <p class="break-words text-wrap text-[13px] font-medium text-zinc-300 bg-transparent mix-blend-difference z-10 shadow-2xl rounded-none px-0.5 select-none cursor-default">
           {pos[0]} \ {pos[1]}

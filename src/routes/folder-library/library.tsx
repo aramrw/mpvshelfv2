@@ -55,9 +55,9 @@ export default function Library() {
   });
 
   return (
-    <main class="w-full h-[100vh] relative overflow-auto" style={{ "scrollbar-gutter": "stable" }}>
+    <main class="w-full h-[100dvh] relative overflow-auto" style={{ "scrollbar-gutter": "stable" }}>
       <NavBar />
-      <Tabs defaultValue="videos" class="w-full" orientation="horizontal">
+      <Tabs class="w-full" orientation="horizontal">
         <Show when={mainParentFolder() && user()}>
           <LibraryHeader
             user={user}
@@ -95,6 +95,6 @@ export default function Library() {
           </Show>
         </Show>
       </Tabs>
-    </main>
+		    </main>
   );
 }

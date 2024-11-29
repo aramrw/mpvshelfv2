@@ -54,9 +54,9 @@ const LibraryVideoCard = ({
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            class="max-w-[450px] h-56 cursor-pointer relative w-full border-[1.5px]
-						border-transparent rounded-none shadow-black/30 shadow-md flex items-center
-						justify-center overflow-hidden will-change-transform transition-all group"
+            class="min-w-52 max-w-[450px] h-52 xl:h-60 cursor-pointer relative w-full border-[2px]
+						border-primary/80 shadow-black/50 shadow-md flex items-center
+						justify-center overflow-hidden will-change-transform transition-all group rounded-sm"
             onClick={onClick}
           >
             <div
@@ -72,7 +72,10 @@ const LibraryVideoCard = ({
             {/* Folder Image */}
             <div class="folder-card-container inset-0">
               <Show when={video.cover_img_path}>
-                <img src={video.cover_img_path && convertFileSrc(video.cover_img_path)} class="object-cover w-full h-full relative select-none" />
+                <img src=
+                  {video.cover_img_path && convertFileSrc(video.cover_img_path)}
+                  class="object-cover w-full h-full relative select-none"
+                />
               </Show>
             </div>
 
@@ -84,26 +87,32 @@ const LibraryVideoCard = ({
             {/* Duration Bar */}
             <div
               class="w-full h-3 absolute left-0 top-0 bg-primary/50 
-							group-hover:opacity-0 transition-all duration-200"
+							group-hover:opacity-0 transition-all duration-200 backdrop-blur-sm"
             />
-            {/* Position Bar with blurred background */}
+            {/* Position Bar */}
             <div
-              class="h-3 absolute left-0 top-0 bg-secondary mix-blend-difference backdrop-blur-md
+              class="h-3 absolute left-0 top-0 bg-secondary mix-blend-exclusion backdrop-blur-md
 							group-hover:opacity-0 transition-all duration-200"
               style={{
                 width: `${calcTimestampAvg(video.position, video.duration)}%`
               }}
             />
 
-            {/* Video Title at Bottom */}
+            {/* Video Title */}
             <h1
-              class="w-fit h-full text-md lg:text-lg xl:text-xl absolute left-0 top-0 bg-primary/80 font-semibold
+              class="w-fit flex flex-col items-center justify-start h-full text-xs absolute left-0 top-0 bg-primary/80 font-semibold
 								border-r-4 border-r-secondary/10 shadow-sm shadow-black/50 text-nowrap
-								text-border p-1 pl-1.5 backdrop-blur-sm mix-blend-plus-darker
-								group-hover:opacity-90 transition-all duration-300 will-change-auto
-								[writing-mode:vertical-rl] [text-orientation:upright] [letter-spacing:-0.1em]"
+								text-border backdrop-blur-sm mix-blend-plus-darker
+								group-hover:opacity-90 transition-all duration-300 will-change-auto"
             >
-              {video.title}
+              <p class="w-full h-fit font-bold text-base border-b-2 border-secondary/10 p-1 text-center">
+                {index()}
+              </p>
+              <p
+                class="p-1 h-full w-full text-center [writing-mode:vertical-rl] [text-orientation:upright] [letter-spacing:]"
+              >
+                {video.title}
+              </p>
             </h1>
 
             {/* Play Icon */}

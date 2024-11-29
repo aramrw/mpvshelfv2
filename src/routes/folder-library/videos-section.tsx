@@ -26,7 +26,7 @@ export default function LibraryVideosSection({
       </Show>
       <Show when={osVideos.state === "ready" && mainParentFolder.state === "ready"}>
         <section
-          class="md:px-4 overflow-hidden w-full h-fit px-2 pb-4 relative
+          class="md:px-4 overflow-hidden w-full h-fit px-2 pb-4 pt-2 relative
 				border-b-white border-b-2 shadow-lg shadow-primary/10"
         >
           <ul

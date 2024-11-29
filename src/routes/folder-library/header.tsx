@@ -6,6 +6,10 @@ import { calcTimestampAvg } from "./video-card";
 import { Transition } from "solid-transition-group";
 import { VideoDescription } from "../../main-components/description/video-desc";
 
+export function escapeCSSUrl(url: string) {
+  return url.replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
 export default function ({
   user,
   mainParentFolder,
@@ -34,30 +38,34 @@ export default function ({
             <div
               class="absolute inset-0 z-0"
               style={{
-                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),url(${convertFileSrc(mainParentFolder()?.last_watched_video?.cover_img_path!)})`,
+                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),
+						url(${mainParentFolder()?.last_watched_video ?
+                    escapeCSSUrl(convertFileSrc(mainParentFolder()?.last_watched_video?.cover_img_path!)) :
+                    escapeCSSUrl(convertFileSrc(mainParentFolder()?.cover_img_path!))})`,
                 "background-size": "cover",
                 "background-repeat": "no-repeat",
-                "background-position": "center",
-                filter: "blur(9px)",
+                "background-position": "start",
+                filter: "blur(6px)",
               }}
             />
           </Show>
           <h1
-            class="text-secondary/70 bg-transparent mix-blend-difference w-fit font-semibold z-10 relative text-medium md:text-xl
-        lg:text-2xl shadow-2xl px-0.5 border-secondary/70 border-2 mb-1"
+            class="text-center text-secondary mix-blend-difference backdrop-blur-md
+						bg-transparent w-fit font-semibold z-10 relative text-medium md:text-xl
+        lg:text-2xl xl:text-3xl pb-0.5 lg:pb-1 shadow-sm shadow-primary/20 px-0.5 border-secondary/70 border-2 mb-1"
           >
             {mainParentFolder()?.title}
           </h1>
           <div class="w-fit flex flex-row items-center gap-1">
             <h2
-              class="text-secondary/50 mb-2 text-xs w-fit font-semibold z-15 relative
-					bg-transparent mix-blend-difference border-secondary/50 border-[1.5px] px-1 shadow-md"
+              class="text-secondary/50 mb-2 text-xs w-fit font-semibold z-15 relative backdrop-blur-sm cursor-default select-none
+					bg-transparent mix-blend-difference border-secondary/50 border-[1.5px] px-1 shadow-sm shadow-primary/20"
             >
               {mainParentFolder()?.update_date}
             </h2>
             <h3
-              class="text-secondary/50 mb-2 text-xs w-fit font-semibold z-15 relative
-					bg-transparent mix-blend-difference border-secondary/50 border-[1.5px] px-1 shadow-md"
+              class="text-secondary/50 mb-2 text-xs w-fit font-semibold z-15 relative backdrop-blur-sm cursor-default select-none
+					bg-transparent mix-blend-difference border-secondary/50 border-[1.5px] px-1 shadow-sm shadow-primary/20"
             >
               {mainParentFolder()?.update_time}
             </h3>
@@ -69,7 +77,7 @@ export default function ({
               <div
                 class="w-full h-full absolute left-0 top-0 bg-primary/50"
               />
-              {/* Position Bar with blurred background */}
+              {/* Position Bar */}
               <div
                 class="h-full absolute left-0 top-0 bg-secondary mix-blend-difference backdrop-blur-md"
                 style={{
