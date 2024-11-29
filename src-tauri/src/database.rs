@@ -206,12 +206,10 @@ impl HasPath for OsVideo {
 
 impl OsVideo {
     pub fn new(
-        handle: &AppHandle,
         user_id: String,
         super_parent: Option<impl AsRef<str>>,
         main_folder_path: String,
         path: String,
-        index: usize,
         update_date: String,
         update_time: String,
         app_data_dir: &Path,
@@ -231,9 +229,9 @@ impl OsVideo {
 
         let cover_img_path =
             join_cover_img_path(super_parent, &main_folder_path, &path, app_data_dir)?;
-        if !check_cover_img_exists(&cover_img_path) {
-            call_ffmpeg_sidecar(handle, Some(index), &path, Path::new(&cover_img_path)).unwrap();
-        }
+        // if !check_cover_img_exists(&cover_img_path) {
+        //     call_ffmpeg_sidecar(handle, Some(index), &path, Path::new(&cover_img_path)).unwrap();
+        // }
 
         let vid = OsVideo {
             user_id,
