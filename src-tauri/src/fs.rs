@@ -90,10 +90,10 @@ type FolderGroup = (OsFolder, Vec<OsFolder>, Vec<OsVideo>);
 fn delete_stale_entries(
     handle: AppHandle,
     old_dirs: Vec<OsFolder>,
-    old_panels: Vec<OsVideo>,
+    old_vids: Vec<OsVideo>,
 ) -> Result<(), DatabaseError> {
     delete_os_folders(handle.clone(), old_dirs)?;
-    delete_os_videos(&handle, old_panels)?;
+    delete_os_videos(&handle, old_vids)?;
     Ok(())
 }
 
@@ -297,11 +297,9 @@ pub async fn upsert_read_os_dir(
     new_cfs.push(main_folder);
 
     futures_util::stream::iter(videos.iter().enumerate())
-        .for_each_concurrent(
-            /* Limit concurrency level */ 10,
-            |(i, cf)| {
-                let handle = handle.clone();
-                async move {
+        .for_each_concurrent(/* Limit concurrency level */ 10, |(i, cf)| {
+            let handle = handle.clone();
+            async move {
                 if let Some(cip) = cf.cover_img_path.as_ref() {
                     if let Err(e) =
                         call_ffmpeg_sidecar(&handle, Some(i + 3), &cf.path, Path::new(cip)).await
@@ -309,9 +307,8 @@ pub async fn upsert_read_os_dir(
                         eprintln!("Error processing video {}: {:?}", i, e);
                     }
                 }
-                }
-            },
-        )
+            }
+        })
         .await;
 
     update_os_videos(handle.clone(), videos)?;
