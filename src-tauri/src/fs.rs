@@ -1,19 +1,19 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::thread::sleep;
-use std::time::{Duration, Instant};
 //use std::time::Instant;
-use futures_util::TryStreamExt;
+use futures_util::{StreamExt, TryStreamExt};
 use hashbrown::HashMap;
 use rayon::iter::{
-    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelBridge,
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+    IntoParallelRefMutIterator, ParallelBridge,
 };
 use rayon::slice::ParallelSliceMut;
 use std::{env, fs, io};
 use std::{fs::read_dir, process::Command};
+use tauri_plugin_shell::process::CommandEvent;
 use tokio::io::AsyncWriteExt;
 
-use crate::database::data::v1::{OsVideo, OsVideoKey};
+use crate::database::data::v1::OsVideo;
 use crate::database::{data::v1::OsFolder, update_os_folders};
 use crate::database::{delete_os_folders, delete_os_videos, update_os_videos};
 use crate::error::{DatabaseError, MpvError, MpvShelfError, ReadDirError};
@@ -257,8 +257,9 @@ fn find_stale_entries(
     }
 }
 
+/// returns a bool to indicate whether a refetch should be performed
 #[command]
-pub fn upsert_read_os_dir(
+pub async fn upsert_read_os_dir(
     handle: AppHandle,
     dir: String,
     parent_path: Option<String>,
@@ -281,26 +282,41 @@ pub fn upsert_read_os_dir(
     } = stale_entries
     {
         if let Some(deleted_entries) = deleted.take() {
-            // Only move the deleted entries.
+            // only move the deleted entries.
             delete_stale_entries(handle.clone(), deleted_entries.0, deleted_entries.1)?;
         }
     }
-
     if let StaleEntries::Found { dirs, videos, .. } = &stale_entries {
         if dirs.is_none() && videos.is_none() {
             stale_entries = StaleEntries::None
         }
     }
 
-    let (main_folder, mut new_cfs, panels) =
+    let (main_folder, mut new_cfs, videos) =
         read_os_folder_dir(&handle, dir, user_id, None, parent_path, stale_entries)?;
-
-    // Update panels and folders with the new data.
-    update_os_videos(handle.clone(), panels)?;
     new_cfs.push(main_folder);
+
+    futures_util::stream::iter(videos.iter().enumerate())
+        .for_each_concurrent(
+            /* Limit concurrency level */ 10,
+            |(i, cf)| {
+                let handle = handle.clone();
+                async move {
+                if let Some(cip) = cf.cover_img_path.as_ref() {
+                    if let Err(e) =
+                        call_ffmpeg_sidecar(&handle, Some(i + 3), &cf.path, Path::new(cip)).await
+                    {
+                        eprintln!("Error processing video {}: {:?}", i, e);
+                    }
+                }
+                }
+            },
+        )
+        .await;
+
+    update_os_videos(handle.clone(), videos)?;
     update_os_folders(handle, new_cfs)?;
 
-    // Indicate whether a refetch was performed.
     Ok(true)
 }
 
@@ -312,8 +328,8 @@ pub fn read_os_folder_dir(
     parent_path: Option<String>,
     stale_entries: StaleEntries,
 ) -> Result<FolderGroup, ReadDirError> {
-    let mut childfolder_paths = HashSet::new();
-    let mut video_paths = HashSet::new();
+    let mut childfolder_paths = Vec::new();
+    let mut video_paths = Vec::new();
     read_dir_helper(&path, &mut childfolder_paths, &mut video_paths)?;
 
     let parent_path = parent_path.is_some().then(|| {
@@ -336,9 +352,9 @@ pub fn read_os_folder_dir(
             let stale_videos = videos.unwrap_or_default();
 
             // Filter out stale child folders that are not in the stale_dirs.
-            childfolder_paths = stale_dirs;
+            childfolder_paths.retain(|cfp| stale_dirs.contains(cfp));
 
-            video_paths = stale_videos;
+            video_paths.retain(|vp| stale_videos.contains(vp));
         }
         // If stale_entries is `None`, do nothing, no filtering occurs.
     }
@@ -350,16 +366,13 @@ pub fn read_os_folder_dir(
     let mut total_child_folders: Vec<OsFolder> = Vec::new();
     let mut total_videos: Vec<OsVideo> = Vec::new();
     let current_folders_videos: Vec<OsVideo> = video_paths
-        .into_iter()
-        .enumerate()
-        .filter_map(|(index, video_path)| {
+        .into_par_iter()
+        .filter_map(|video_path| {
             OsVideo::new(
-                handle,
                 user_id.clone(),
                 parent_path.clone(),
                 path.clone(),
                 video_path,
-                index + 3,
                 update_date.clone(),
                 update_time.clone(),
                 &app_data_dir,
@@ -407,7 +420,6 @@ pub fn read_os_folder_dir(
 
     for group in child_folders_group.into_iter() {
         let (folder, c_folders, g_videos) = group;
-        total_videos.extend(g_videos);
 
         if cover_img.is_none() {
             if let Some(ref cover_img_path) = folder.cover_img_path {
@@ -415,6 +427,7 @@ pub fn read_os_folder_dir(
             }
         }
 
+        total_videos.extend(g_videos);
         total_child_folders.push(folder);
         total_child_folders.extend(c_folders);
     }
@@ -520,12 +533,13 @@ pub fn join_cover_img_path(
     Ok(cover_img_full_path)
 }
 
-pub fn call_ffmpeg_sidecar(
+pub async fn call_ffmpeg_sidecar(
     handle: &AppHandle,
     index: Option<usize>,
     entry_path: impl AsRef<str>,
     entry_frame_full_path: &Path,
 ) -> Result<(), MpvError> {
+    println!("calling ffmpeg sidecar for: {:?}", entry_frame_full_path);
     let frame_index = index.unwrap_or(5).to_string();
     let sidecar_cmd = handle.shell().sidecar("ffmpeg").unwrap().args([
         "-ss",
@@ -537,23 +551,23 @@ pub fn call_ffmpeg_sidecar(
         &entry_frame_full_path.to_string_lossy(),
     ]);
 
-    let (mut _rx, mut _child) = sidecar_cmd.spawn().unwrap();
+    let (mut rx, mut child) = sidecar_cmd.spawn().unwrap();
 
-    // while let Some(event) = rx.recv() {
-    //     match event {
-    //         // CommandEvent::Stdout(line) => {
-    //         //     println!("stdout: {}", String::from_utf8_lossy(&line));
-    //         // }
-    //         // CommandEvent::Stderr(line) => {
-    //         //     eprintln!("stderr: {}", String::from_utf8_lossy(&line));
-    //         // }
-    //         CommandEvent::Terminated(_) => {
-    //             // Process has finished
-    //             return Ok(());
-    //         }
-    //         _ => {}
-    //     }
-    // }
+    while let Some(event) = rx.recv().await {
+        match event {
+            // CommandEvent::Stdout(line) => {
+            //     println!("stdout: {}", String::from_utf8_lossy(&line));
+            // }
+            CommandEvent::Stderr(line) => {
+                eprintln!("stderr: {}", String::from_utf8_lossy(&line));
+            }
+            CommandEvent::Terminated(_) => {
+                // Process has finished
+                return Ok(());
+            }
+            _ => {}
+        }
+    }
 
     Ok(())
 }
