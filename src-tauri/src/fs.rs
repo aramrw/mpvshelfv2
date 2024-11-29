@@ -302,7 +302,7 @@ pub async fn upsert_read_os_dir(
             async move {
                 if let Some(cip) = cf.cover_img_path.as_ref() {
                     if let Err(e) =
-                        call_ffmpeg_sidecar(&handle, Some(i + 3), &cf.path, Path::new(cip)).await
+                        ffmpeg_extract_frame(&handle, Some(i + 3), &cf.path, Path::new(cip)).await
                     {
                         eprintln!("Error processing video {}: {:?}", i, e);
                     }
@@ -530,7 +530,7 @@ pub fn join_cover_img_path(
     Ok(cover_img_full_path)
 }
 
-pub async fn call_ffmpeg_sidecar(
+pub async fn ffmpeg_extract_frame(
     handle: &AppHandle,
     index: Option<usize>,
     entry_path: impl AsRef<str>,
@@ -556,7 +556,7 @@ pub async fn call_ffmpeg_sidecar(
             //     println!("stdout: {}", String::from_utf8_lossy(&line));
             // }
             CommandEvent::Stderr(line) => {
-                eprintln!("stderr: {}", String::from_utf8_lossy(&line));
+                //eprintln!("stderr: {}", String::from_utf8_lossy(&line));
             }
             CommandEvent::Terminated(_) => {
                 // Process has finished
