@@ -36,7 +36,7 @@ const LibraryFolderCard = ({
       <ContextMenu>
         <ContextMenuTrigger>
           <div class="h-56 max-w-[450px] cursor-pointer relative w-full border-[1.5px] 
-						border-transparent rounded-none shadow-black/30 shadow-md flex items-center 
+						border-transparent rounded-sm shadow-black/30 shadow-md flex items-center 
 						justify-center overflow-hidden will-change-transform transition-all group"
             onClick={onClick}
           >
@@ -58,14 +58,15 @@ const LibraryFolderCard = ({
             />
 
             {/* folder.Title at Bottom */}
-            <div class="h-fit font-semibold absolute left-0 bottom-0 bg-primary/80 
-												border-t-4 border-t-secondary/10 shadow-md 
-                        text-border text-xs p-1 mix-blend-plus-darker 
-							rounded-tr-sm
-							backdrop-blur-md
-							group-hover:opacity-0 transition-opacity duration-200">
+            <h1
+              class="w-fit h-full text-md lg:text-lg xl:text-xl absolute left-0 top-0 bg-primary/80 font-semibold
+								border-r-4 border-r-secondary/10 shadow-sm shadow-black/50 text-nowrap
+								text-border p-1 pl-1.5 backdrop-blur-sm mix-blend-plus-darker
+								group-hover:opacity-90 transition-all duration-300 will-change-auto
+								[writing-mode:vertical-rl] [text-orientation:upright] [letter-spacing:0.08em]"
+            >
               {folder.title}
-            </div>
+            </h1>
 
           </div>
         </ContextMenuTrigger>
