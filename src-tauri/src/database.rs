@@ -11,7 +11,7 @@ use tauri::{command, AppHandle, Manager};
 
 use crate::{
     error::DatabaseError,
-    fs::{call_ffmpeg_sidecar, check_cover_img_exists, join_cover_img_path, HasPath},
+    fs::{join_cover_img_path, HasPath},
     misc::get_date_time,
     mpv::EPISODE_TITLE_REGEX,
 };
