@@ -22,7 +22,7 @@ export default function LibraryFoldersSection({
 				border-b-white border-b-2 shadow-lg shadow-primary/10">
         <ul
           class="mx-auto h-fit w-fit grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 
-					xl:grid-cols-4 gap-6 sm:gap-10 justify-center items-center">
+					xl:grid-cols-4 gap-6 justify-center items-center">
           <For each={childFolders()}>
             {(folder, index) => (
               <LibraryFolderCard
