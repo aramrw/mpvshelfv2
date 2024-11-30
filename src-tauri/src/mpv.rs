@@ -16,7 +16,7 @@ use std::sync::LazyLock;
 
 pub static EPISODE_TITLE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     regex::Regex::new(
-        r"(?i)(?:S\d{1,2}E|第|EP?|Episode|Ch|Chapter|Vol|Volume|#)?\s*(\d{1,3})(?:話|巻|章|節|[._\-\s]|$)",
+        r"(?i)(?:S\d{1,2}[-\s]*|(?:第|EP?|Episode|Ch|Chapter|Vol|Volume|#)?\s*)?(\d{1,3})(?:話|巻|章|節|[._\-\s]|$)",
     )
     .unwrap()
 });
@@ -28,7 +28,7 @@ pub enum TimestampType {
 }
 
 #[derive(Debug, Clone)]
-struct MpvPlaybackData {
+pub struct MpvPlaybackData {
     /// Title of the last video played
     last_video_path: String,
     /// Timestamp of the last position watched
@@ -46,13 +46,15 @@ impl MpvPlaybackData {
         }
     }
 
-    pub fn update_timestamp(
-        &mut self,
-        ts_type: TimestampType,
-        ts: String,
-    ) -> Result<(), MpvStdoutError> {
-        let parts: Vec<&str> = ts.split(':').collect();
+    /// this is only used for ffmpegs output currently
+    pub fn get_duration(ts: String) -> Result<u64, MpvStdoutError> {
+        // First handle the potential decimal portion from FFmpeg
+        let base_timestamp = ts
+            .split('.')
+            .next()
+            .ok_or_else(|| MpvStdoutError::InvalidTimestamp(ts.clone()))?;
 
+        let parts: Vec<&str> = base_timestamp.split(':').collect();
         if parts.len() != 3 {
             return Err(MpvStdoutError::InvalidTimestamp(ts));
         }
@@ -60,23 +62,49 @@ impl MpvPlaybackData {
         let hours: u64 = parts[0].parse().map_err(|e: ParseIntError| {
             MpvStdoutError::ParseInt(parts[0].to_string(), e.to_string())
         })?;
-
         let minutes: u64 = parts[1].parse().map_err(|e: ParseIntError| {
             MpvStdoutError::ParseInt(parts[1].to_string(), e.to_string())
         })?;
-
         let seconds: u64 = parts[2].parse().map_err(|e: ParseIntError| {
             MpvStdoutError::ParseInt(parts[2].to_string(), e.to_string())
         })?;
 
         let total_seconds = hours * 3600 + minutes * 60 + seconds;
+        Ok(total_seconds)
+    }
 
+    pub fn update_timestamp(
+        &mut self,
+        ts_type: TimestampType,
+        ts: String,
+    ) -> Result<u64, MpvStdoutError> {
+        // First handle the potential decimal portion from FFmpeg
+        let base_timestamp = ts
+            .split('.')
+            .next()
+            .ok_or_else(|| MpvStdoutError::InvalidTimestamp(ts.clone()))?;
+
+        let parts: Vec<&str> = base_timestamp.split(':').collect();
+        if parts.len() != 3 {
+            return Err(MpvStdoutError::InvalidTimestamp(ts));
+        }
+
+        let hours: u64 = parts[0].parse().map_err(|e: ParseIntError| {
+            MpvStdoutError::ParseInt(parts[0].to_string(), e.to_string())
+        })?;
+        let minutes: u64 = parts[1].parse().map_err(|e: ParseIntError| {
+            MpvStdoutError::ParseInt(parts[1].to_string(), e.to_string())
+        })?;
+        let seconds: u64 = parts[2].parse().map_err(|e: ParseIntError| {
+            MpvStdoutError::ParseInt(parts[2].to_string(), e.to_string())
+        })?;
+
+        let total_seconds = hours * 3600 + minutes * 60 + seconds;
         match ts_type {
             TimestampType::Position => self.last_video_position = total_seconds,
             TimestampType::Duration => self.last_video_duration = total_seconds,
         }
-
-        Ok(())
+        Ok(total_seconds)
     }
 }
 
