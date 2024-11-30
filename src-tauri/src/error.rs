@@ -19,6 +19,8 @@ pub enum MpvShelfError {
     Http(#[from] HttpClientError),
     #[error("{0}")]
     ReadDir(#[from] ReadDirError),
+    #[error("{0}")]
+    Ffmpeg(#[from] FfmpegError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -67,6 +69,19 @@ pub enum MpvError {
     DatabaseError(#[from] DatabaseError),
     #[error("{0}")]
     StdOutError(#[from] MpvStdoutError),
+}
+
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug)]
+pub enum FfmpegError {
+    #[error("{0}")]
+    Io(#[from] io::Error),
+    #[error("{0}")]
+    TauriPluginShell(#[from] tauri_plugin_shell::Error),
+    #[error("ffmpeg panicked: {0}")]
+    StdErr(String),
+    #[error("ffmpeg process ended abnormally without properly terminating - for instance, if it was forcefully killed or if there was a system-level interruption.")]
+    ProcessInterrupted,
 }
 
 #[derive(thiserror::Error, Debug)]
