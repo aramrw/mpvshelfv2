@@ -70,6 +70,7 @@ export default function ({
               {mainParentFolder()?.update_time}
             </h3>
           </div>
+
           <div class="relative w-fit flex items-start gap-2 group cursor-pointer">
             {/* Flex container for the image and SVG */}
             <Show when={mainParentFolder()?.title && mainParentFolder()?.last_watched_video && osVideos()}>
