@@ -36,18 +36,15 @@ const LibraryVideoCard = ({
   mutate: Setter<OsVideo[] | null | undefined>;
   onClick: (event: MouseEvent) => void;
 }) => {
-  const splitTitle = splitFileName(video.title);
-  const FILE_SRC_LWV_COVER_IMG_PATH = convertFileSrc(video?.cover_img_path ?? "");
-
   return (
     <Transition
       appear={true}
       onEnter={(el, done) => {
-        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1000 });
+        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600 });
         a.finished.then(done);
       }}
       onExit={(el, done) => {
-        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1000 });
+        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 });
         a.finished.then(done);
       }}
     >
@@ -62,7 +59,7 @@ const LibraryVideoCard = ({
             <div
               class="absolute inset-0 z-0"
               style={{
-                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),url(${FILE_SRC_LWV_COVER_IMG_PATH})`,
+                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),url(${convertFileSrc(video?.cover_img_path ?? "")})`,
                 "background-size": "cover",
                 "background-repeat": "no-repeat",
                 "background-position": "center",
