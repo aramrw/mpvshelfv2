@@ -2,15 +2,18 @@ import { For, Resource } from "solid-js";
 import { OsFolder, UserType } from "../../models";
 import LibraryFolderCard from "./folder-card";
 import { useNavigate } from "@solidjs/router";
+import { Platform } from "@tauri-apps/plugin-os";
 
 export default function LibraryFoldersSection({
   user,
   mainParentFolder,
   childFolders,
+  currentPlatform,
 }: {
   user: Resource<UserType | null>;
   mainParentFolder: Resource<OsFolder | null>;
   childFolders: Resource<OsFolder[] | null>;
+  currentPlatform: Platform,
 }
 ) {
   const navigate = useNavigate();
@@ -29,6 +32,7 @@ export default function LibraryFoldersSection({
                 index={index}
                 folder={folder}
                 mainParentFolder={mainParentFolder}
+                currentPlatform={currentPlatform}
                 onClick={() => {
                   navigate(`/library/${encodeURIComponent(folder.path)}`);
                 }}

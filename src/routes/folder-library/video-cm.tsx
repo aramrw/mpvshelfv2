@@ -9,10 +9,10 @@ import {
   ContextMenuSubTrigger,
 } from "../../components/ui/context-menu";
 import { Platform } from "@tauri-apps/plugin-os";
-import show_in_folder from "../../tauri-cmds/show_in_folder";
+import show_in_folder from "../../tauri-cmds/os_folders/show_in_explorer";
 import { IconChevronDown, IconChevronUp, IconFolderSearch } from "@tabler/icons-solidjs";
 import IconHeroEye from "../../main-components/icons/icon-hero-eye";
-import { update_os_videos } from "../../tauri-cmds/update_os_videos";
+import { update_os_videos } from "../../tauri-cmds/os_videos/update_os_videos";
 import IconHeroSlashEye from "../../main-components/icons/icon-hero-slasheye";
 
 export default function VideoCardContextMenu({
@@ -25,7 +25,7 @@ export default function VideoCardContextMenu({
   folder: Resource<OsFolder | null>;
   video: OsVideo;
   index: Accessor<number>;
-  mutate: Setter<OsVideo[] | null | undefined>;
+  mutate: Setter<OsVideo[] | null | undefined>
   currentPlatform: Platform;
 }) {
   const toggleWatchStatus = (targetStatus: boolean, upToIndex: number) => {

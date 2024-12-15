@@ -14,7 +14,7 @@ export default function LibraryVideosSection({
   user: Resource<UserType | null>;
   mainParentFolder: Resource<OsFolder | null>;
   osVideos: Resource<OsVideo[] | null>;
-  mutate: Setter<OsVideo[] | null | undefined>;
+  mutate: Setter<OsVideo[] | null | undefined>
 }) {
   const currentPlatform = platform();
   const [error, setError] = createSignal<string | null>();
@@ -42,11 +42,7 @@ export default function LibraryVideosSection({
                   currentPlatform={currentPlatform}
                   mutate={mutate}
                   onClick={async () => {
-                    const error = await play_video(mainParentFolder()!, osVideos()!, video, user()!);
-                    if (error) {
-                      setError(null);
-                      setError(error);
-                    }
+                    await play_video(mainParentFolder()!, osVideos()!, video, user()!);
                   }}
                 />
               )}

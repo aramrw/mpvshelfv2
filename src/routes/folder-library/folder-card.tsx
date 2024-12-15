@@ -8,16 +8,20 @@ import {
 import { Transition } from "solid-transition-group";
 import { IconFolderFilled } from "@tabler/icons-solidjs";
 import { FolderDescription } from "../../main-components/description/folder-desc";
+import GenericContextMenu from "../../main-components/generic-context-menu";
+import { Platform } from "@tauri-apps/plugin-os";
 
 const LibraryFolderCard = ({
   index,
   folder,
   mainParentFolder,
   onClick,
+  currentPlatform,
 }: {
   index: Accessor<number>;
   folder: OsFolder;
   mainParentFolder: Resource<OsFolder | null>;
+  currentPlatform: Platform,
   onClick: (event: MouseEvent) => void;
 }) => {
 
@@ -36,10 +40,21 @@ const LibraryFolderCard = ({
       <ContextMenu>
         <ContextMenuTrigger>
           <div class="h-56 max-w-[450px] cursor-pointer relative w-full border-[1.5px] 
-						border-transparent rounded-sm shadow-black/30 shadow-md flex items-center 
+						border-primary/80 rounded-sm shadow-black/30 shadow-md flex items-center 
 						justify-center overflow-hidden will-change-transform transition-all group"
             onClick={onClick}
           >
+            <div
+              class="absolute inset-0 z-0"
+              style={{
+                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),
+								url(${convertFileSrc(folder?.cover_img_path ?? "")})`,
+                "background-size": "cover",
+                "background-repeat": "no-repeat",
+                "background-position": "center",
+                filter: "blur(6px)",
+              }}
+            />
 
             {/* Folder Image */}
             <div class="folder-card-container inset-0"
@@ -57,19 +72,25 @@ const LibraryFolderCard = ({
               folder={() => folder}
             />
 
-            {/* folder.Title at Bottom */}
+            {/* Folder Title */}
             <h1
-              class="w-fit h-full text-md lg:text-lg xl:text-xl absolute left-0 top-0 bg-primary/80 font-semibold
-								border-r-4 border-r-secondary/10 shadow-sm shadow-black/50 text-nowrap
-								text-border p-1 pl-1.5 backdrop-blur-sm mix-blend-plus-darker
-								group-hover:opacity-90 transition-all duration-300 will-change-auto
-								[writing-mode:vertical-rl] [text-orientation:upright] [letter-spacing:0.08em]"
+              class="absolute left-0 top-0 flex h-full w-fit flex-col items-center justify-start text-nowrap border-r-4 border-r-secondary/10 bg-primary/80 text-xs font-semibold text-border mix-blend-plus-darker shadow-sm shadow-black/50 backdrop-blur-sm transition-all duration-300 will-change-auto group-hover:opacity-90"
             >
-              {folder.title}
+              <p class="h-fit w-full border-b-2 border-secondary/10 p-1 text-center text-base font-bold">
+                {index()}
+              </p>
+              <p
+                class="[letter-spacing:] h-full w-full p-1 text-start [text-orientation:upright] [writing-mode:vertical-rl]"
+              >
+                {folder.title}
+              </p>
             </h1>
-
           </div>
         </ContextMenuTrigger>
+        <GenericContextMenu
+          item={() => folder}
+          currentPlatform={currentPlatform}
+        />
       </ContextMenu>
     </Transition >
   );

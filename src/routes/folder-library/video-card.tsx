@@ -4,22 +4,9 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { ContextMenu, ContextMenuTrigger } from "../../components/ui/context-menu";
 import { Transition } from "solid-transition-group";
 import { IconReload } from "@tabler/icons-solidjs";
-import IconHeroEye from "../../main-components/icons/icon-hero-eye";
 import VideoCardContextMenu from "./video-cm";
 import { Platform } from "@tauri-apps/plugin-os";
 import { VideoDescription } from "../../main-components/description/video-desc";
-
-function splitFileName(title: string): [string, string] | [string] {
-  const lastDotIndex = title.lastIndexOf(".");
-
-  if (lastDotIndex === -1) {
-    return [title];
-  }
-
-  const name = title.slice(0, lastDotIndex);
-  const extension = title.slice(lastDotIndex + 1);
-  return [name, extension];
-}
 
 const LibraryVideoCard = ({
   index,
@@ -33,33 +20,32 @@ const LibraryVideoCard = ({
   video: OsVideo;
   mainParentFolder: Resource<OsFolder | null>;
   currentPlatform: Platform;
-  mutate: Setter<OsVideo[] | null | undefined>;
+  mutate: Setter<OsVideo[] | null | undefined>
   onClick: (event: MouseEvent) => void;
 }) => {
   return (
     <Transition
       appear={true}
       onEnter={(el, done) => {
-        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600 });
+        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
         a.finished.then(done);
       }}
       onExit={(el, done) => {
-        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 });
+        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
         a.finished.then(done);
       }}
     >
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            class="min-w-52 max-w-[450px] h-52 xl:h-60 cursor-pointer relative w-full border-[2px]
-						border-primary/80 shadow-black/50 shadow-md flex items-center
-						justify-center overflow-hidden will-change-transform transition-all group rounded-sm"
+            class="group relative flex h-52 w-full min-w-52 max-w-[450px] cursor-pointer items-center justify-center overflow-hidden rounded-sm border-[2px] border-primary/80 shadow-md shadow-black/50 transition-all will-change-transform xl:h-60"
             onClick={onClick}
           >
             <div
               class="absolute inset-0 z-0"
               style={{
-                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),url(${convertFileSrc(video?.cover_img_path ?? "")})`,
+                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),
+								url(${convertFileSrc(video?.cover_img_path ?? "")})`,
                 "background-size": "cover",
                 "background-repeat": "no-repeat",
                 "background-position": "center",
@@ -71,7 +57,7 @@ const LibraryVideoCard = ({
               <Show when={video.cover_img_path}>
                 <img src=
                   {video.cover_img_path && convertFileSrc(video.cover_img_path)}
-                  class="object-cover w-full h-full relative select-none"
+                  class="relative h-full w-full select-none object-cover"
                 />
               </Show>
             </div>
@@ -83,13 +69,11 @@ const LibraryVideoCard = ({
 
             {/* Duration Bar */}
             <div
-              class="w-full h-3 absolute left-0 top-0 bg-primary/50 
-							group-hover:opacity-0 transition-all duration-200 backdrop-blur-sm"
+              class="absolute left-0 top-0 h-3 w-full bg-primary/50 backdrop-blur-sm transition-all duration-200 group-hover:opacity-0"
             />
             {/* Position Bar */}
             <div
-              class="h-3 absolute left-0 top-0 bg-secondary mix-blend-exclusion backdrop-blur-md
-							group-hover:opacity-0 transition-all duration-200"
+              class="absolute left-0 top-0 h-3 bg-secondary mix-blend-exclusion backdrop-blur-md transition-all duration-200 group-hover:opacity-0"
               style={{
                 width: `${calcTimestampAvg(video.position, video.duration)}%`
               }}
@@ -97,16 +81,13 @@ const LibraryVideoCard = ({
 
             {/* Video Title */}
             <h1
-              class="w-fit flex flex-col items-center justify-start h-full text-xs absolute left-0 top-0 bg-primary/80 font-semibold
-								border-r-4 border-r-secondary/10 shadow-sm shadow-black/50 text-nowrap
-								text-border backdrop-blur-sm mix-blend-plus-darker
-								group-hover:opacity-90 transition-all duration-300 will-change-auto"
+              class="absolute left-0 top-0 flex h-full w-fit flex-col items-center justify-start text-nowrap border-r-4 border-r-secondary/10 bg-primary/80 text-xs font-semibold text-border mix-blend-plus-darker shadow-sm shadow-black/50 backdrop-blur-sm transition-all duration-300 will-change-auto group-hover:opacity-90"
             >
-              <p class="w-full h-fit font-bold text-base border-b-2 border-secondary/10 p-1 text-center">
+              <p class="h-fit w-full border-b-2 border-secondary/10 p-1 text-center text-base font-bold">
                 {index()}
               </p>
               <p
-                class="p-1 h-full w-full text-center [writing-mode:vertical-rl] [text-orientation:upright] [letter-spacing:]"
+                class="[letter-spacing:] h-full w-full p-1 text-start [text-orientation:upright] [writing-mode:vertical-rl]"
               >
                 {video.title}
               </p>
@@ -117,17 +98,12 @@ const LibraryVideoCard = ({
               when={!video.watched}
               fallback={
                 <IconReload
-                  class=" h-auto w-[20%] mix-blend-hard-light opacity-80 p-1 text-secondary/80 bg-primary/70 absolute
-									left-0 bottom-0 z-10 m-auto inset-0 rounded-md scale-x-[-1] shadow-md shadow-primary/20 group-hover:opacity-0
-									transition-opacity duration-300"
+                  class="absolute inset-0 bottom-0 left-0 z-10 m-auto h-auto w-[20%] scale-x-[-1] rounded-md bg-primary/70 p-1 text-secondary/80 opacity-80 mix-blend-hard-light shadow-md shadow-primary/20 transition-opacity duration-300 group-hover:opacity-0"
                 />
               }
             >
               <svg
-                class="h-auto w-[20%] p-1 mix-blend-hard-light opacity-80 absolute fill-secondary/80
-							left-0 z-10 m-auto inset-0 bg-primary/70 rounded-md
-								shadow-md shadow-primary/20 group-hover:opacity-0 transition-opacity
-								duration-300"
+                class="absolute inset-0 left-0 z-10 m-auto h-auto w-[20%] rounded-md bg-primary/70 fill-secondary/80 p-1 opacity-80 mix-blend-hard-light shadow-md shadow-primary/20 transition-opacity duration-300 group-hover:opacity-0"
                 xmlns="http://www.w3.org/2000/svg"
                 width="30"
                 height="30"
@@ -141,7 +117,12 @@ const LibraryVideoCard = ({
             </Show>
           </div>
         </ContextMenuTrigger>
-        <VideoCardContextMenu folder={mainParentFolder} video={video} index={index} mutate={mutate} currentPlatform={currentPlatform} />
+        <VideoCardContextMenu
+          folder={mainParentFolder}
+          video={video}
+          index={index}
+          mutate={mutate}
+          currentPlatform={currentPlatform} />
       </ContextMenu>
     </Transition>
   );
