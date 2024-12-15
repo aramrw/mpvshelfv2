@@ -37,6 +37,8 @@ pub enum DatabaseError {
     IoError(#[from] io::Error),
     #[error("{0:#?}")]
     TuariError(#[from] tauri::Error),
+    #[error("{0}")]
+    SortType(#[from] SortTypeError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -106,6 +108,18 @@ pub enum HttpClientError {
     Tuari(#[from] tauri::Error),
     #[error("{0:#?}")]
     Io(#[from] io::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum SortTypeError {
+    #[error("could not convert to SortType from &str: {0}")]
+    FromStr(String),
+}
+
+impl From<SortTypeError> for InvokeError {
+    fn from(error: SortTypeError) -> Self {
+        InvokeError::from_error(error)
+    }
 }
 
 impl From<ReadDirError> for InvokeError {
