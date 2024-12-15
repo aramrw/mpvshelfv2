@@ -2,16 +2,19 @@ use std::{
     fs::{self, create_dir, remove_file},
     io,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::LazyLock,
 };
 
-use data::v1::{OsFolder, OsFolderKey, OsVideo, OsVideoKey, User};
+use chrono::{NaiveDateTime, NaiveTime};
+use data::v1::{OsFolder, OsFolderKey, OsVideo, OsVideoKey, Settings, User};
 use native_db::*;
+use rayon::slice::ParallelSliceMut;
 use tauri::{command, AppHandle, Manager};
 
 use crate::{
-    error::DatabaseError,
-    fs::{join_cover_img_path, HasPath},
+    error::{DatabaseError, SortTypeError},
+    fs::join_cover_img_path,
     misc::get_date_time,
     mpv::EPISODE_TITLE_REGEX,
 };
@@ -97,7 +100,7 @@ pub mod data {
 
         use super::*;
 
-        #[derive(Serialize, Deserialize, Debug)]
+        #[derive(Serialize, Deserialize, Clone, Debug)]
         #[native_model(id = 1, version = 1)]
         #[native_db]
         pub struct User {
@@ -106,6 +109,7 @@ pub mod data {
             #[secondary_key(unique)]
             pub username: String,
             pub settings: Settings,
+            pub last_watched_video: Option<OsVideo>,
         }
 
         #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -162,6 +166,20 @@ pub mod data {
     }
 }
 
+impl Default for Settings {
+    fn default() -> Self {
+        let (update_date, update_time) = get_date_time();
+        Self {
+            user_id: "1".into(),
+            mpv_path: None,
+            plugins_path: None,
+            autoplay: true,
+            update_date,
+            update_time,
+        }
+    }
+}
+
 static DBMODELS: LazyLock<Models> = LazyLock::new(|| {
     let mut models = Models::new();
     models.define::<data::v1::User>().unwrap();
@@ -186,12 +204,32 @@ pub fn init_database(app_data_dir: &PathBuf, handle: &AppHandle) -> Result<(), d
     Ok(())
 }
 
-impl OsFolder {
-    pub fn get_appdata_frames_folder(&self, app_data_dir: &Path) -> PathBuf {
-        app_data_dir.join("frames").join(&self.title)
+pub trait HasPath {
+    fn path(&self) -> &str;
+}
+
+pub trait HasTitle {
+    fn title(&self) -> &str;
+}
+
+pub trait HasDatetime {
+    fn date(&self) -> &str;
+    fn time(&self) -> &str;
+    fn get_naive_datetime(&self) -> Result<NaiveDateTime, chrono::ParseError> {
+        let date = &self.date(); // "2024-11-30"
+        let mut time = self.time().to_string(); // "10:43pm"
+
+        time.replace_range(time.len() - 2.., "");
+
+        let naive_date = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")?;
+        let naive_time = NaiveTime::parse_from_str(&time, "%H:%M")?;
+
+        // Return combined NaiveDateTime
+        Ok(NaiveDateTime::new(naive_date, naive_time))
     }
 }
 
+// path
 impl HasPath for OsFolder {
     fn path(&self) -> &str {
         self.path.as_ref()
@@ -201,6 +239,44 @@ impl HasPath for OsFolder {
 impl HasPath for OsVideo {
     fn path(&self) -> &str {
         self.path.as_ref()
+    }
+}
+
+// title
+impl HasTitle for OsFolder {
+    fn title(&self) -> &str {
+        self.title.as_ref()
+    }
+}
+
+impl HasTitle for OsVideo {
+    fn title(&self) -> &str {
+        self.title.as_ref()
+    }
+}
+
+// datetime
+impl HasDatetime for OsFolder {
+    fn date(&self) -> &str {
+        &self.update_date
+    }
+    fn time(&self) -> &str {
+        &self.update_time
+    }
+}
+
+impl HasDatetime for OsVideo {
+    fn date(&self) -> &str {
+        &self.update_date
+    }
+    fn time(&self) -> &str {
+        &self.update_time
+    }
+}
+
+impl OsFolder {
+    pub fn get_appdata_frames_folder(&self, app_data_dir: &Path) -> PathBuf {
+        app_data_dir.join("frames").join(&self.title)
     }
 }
 
@@ -273,8 +349,66 @@ impl OsVideo {
     }
 }
 
+// sort type
+
+#[non_exhaustive]
+#[derive(Debug, Clone, Deserialize)]
+pub enum SortType {
+    None,
+    EpisodeTitleRegex,
+    Updated,
+}
+
+impl SortType {
+    pub fn sort<T>(&self) -> impl Fn(&T, &T) -> std::cmp::Ordering
+    where
+        T: HasDatetime + HasTitle,
+    {
+        match self {
+            SortType::Updated => |a: &T, b: &T| {
+                let a_dt = a.get_naive_datetime().unwrap_or_default();
+                let b_dt = b.get_naive_datetime().unwrap_or_default();
+                //println!("a_dt: {:?}, b_dt: {:?}", a_dt, b_dt);
+                b_dt.cmp(&a_dt)
+            },
+            SortType::EpisodeTitleRegex => |a: &T, b: &T| {
+                let num_a = EPISODE_TITLE_REGEX
+                    .captures(a.title())
+                    .and_then(|caps| caps.get(caps.len() - 1))
+                    .and_then(|m| m.as_str().parse::<u32>().ok())
+                    .unwrap_or(0);
+
+                let num_b = EPISODE_TITLE_REGEX
+                    .captures(b.title())
+                    .and_then(|caps| caps.get(caps.len() - 1))
+                    .and_then(|m| m.as_str().parse::<u32>().ok())
+                    .unwrap_or(0);
+
+                num_a.cmp(&num_b)
+            },
+            _ => |_: &T, _: &T| std::cmp::Ordering::Equal,
+        }
+    }
+}
+
+impl FromStr for SortType {
+    type Err = SortTypeError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "none" => Ok(Self::None),
+            "episode_title_regex" => Ok(Self::EpisodeTitleRegex),
+            "updated" => Ok(Self::Updated),
+            _ => Err(SortTypeError::FromStr(s.to_string())),
+        }
+    }
+}
+
 #[command]
-pub fn get_os_folders(handle: AppHandle, user_id: String) -> Result<Vec<OsFolder>, DatabaseError> {
+pub fn get_os_folders(
+    handle: AppHandle,
+    user_id: String,
+    sort_type: String,
+) -> Result<Vec<OsFolder>, DatabaseError> {
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().create(&DBMODELS, db_path)?;
 
@@ -286,6 +420,8 @@ pub fn get_os_folders(handle: AppHandle, user_id: String) -> Result<Vec<OsFolder
         .try_collect()?;
 
     folders.retain(|folder| folder.parent_path.is_none());
+    let sort_type = SortType::from_str(&sort_type)?;
+    folders.par_sort_by(SortType::sort(&sort_type));
 
     if folders.is_empty() {
         return Err(DatabaseError::OsFoldersNotFound(format!(
@@ -320,16 +456,20 @@ pub fn get_os_folder_by_path(
 pub fn get_os_folders_by_path(
     handle: AppHandle,
     parent_path: String,
+    sort_type: String,
 ) -> Result<Vec<OsFolder>, DatabaseError> {
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().create(&DBMODELS, db_path)?;
 
     let rtx = db.r_transaction()?;
-    let folders: Vec<OsFolder> = rtx
+    let mut folders: Vec<OsFolder> = rtx
         .scan()
         .secondary(OsFolderKey::parent_path)?
         .start_with(Some(parent_path.as_str()))?
         .try_collect()?;
+
+    let sort_type = SortType::from_str(&sort_type)?;
+    folders.par_sort_by(sort_type.sort());
 
     if folders.is_empty() {
         return Err(DatabaseError::OsFoldersNotFound(format!(
@@ -369,6 +509,13 @@ pub fn update_os_videos(handle: AppHandle, os_videos: Vec<OsVideo>) -> Result<()
     let rtx = db.rw_transaction()?;
     let (date, time) = get_date_time();
 
+    // // if the user is Some, update
+    // // the last watched video
+    // if let Some(mut user) = user {
+    //     user.last_watched_video = os_videos.last().cloned();
+    //     rtx.upsert(user)?;
+    // }
+
     for mut vid in os_videos {
         vid.update_date = date.clone();
         vid.update_time = time.clone();
@@ -385,12 +532,13 @@ pub fn update_os_videos(handle: AppHandle, os_videos: Vec<OsVideo>) -> Result<()
 pub fn get_os_videos(
     handle: AppHandle,
     main_folder_path: String,
+    sort_type: String,
 ) -> Result<Vec<OsVideo>, DatabaseError> {
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().create(&DBMODELS, db_path)?;
 
     let rtx = db.r_transaction()?;
-    let mut folders: Vec<OsVideo> = rtx
+    let mut videos: Vec<OsVideo> = rtx
         .scan()
         .secondary(OsVideoKey::main_folder_path)?
         .start_with(main_folder_path.as_str())?
@@ -400,38 +548,25 @@ pub fn get_os_videos(
         })
         .try_collect()?;
 
-    if folders.is_empty() {
+    if videos.is_empty() {
         return Err(DatabaseError::OsVideosNotFound(format!(
             "0 OsVideos found belonging to: {main_folder_path}",
         )));
     }
 
-    folders.sort_by(|a, b| {
-        // Extract the episode number from the title using regex
-        let num_a = EPISODE_TITLE_REGEX
-            .captures(&a.title)
-            .and_then(|caps| caps.get(1)) // Assuming the first capturing group contains the episode number
-            .and_then(|m| m.as_str().parse::<u32>().ok())
-            .unwrap_or(0);
+    let sort_type = SortType::from_str(&sort_type)?;
+    videos.par_sort_by(sort_type.sort());
 
-        let num_b = EPISODE_TITLE_REGEX
-            .captures(&b.title)
-            .and_then(|caps| caps.get(1))
-            .and_then(|m| m.as_str().parse::<u32>().ok())
-            .unwrap_or(0);
+    //println!("{:#?}", videos);
 
-        num_a.cmp(&num_b)
-    });
-
-    //println!("{:#?}", folders);
-
-    Ok(folders)
+    Ok(videos)
 }
 
 #[command]
 pub fn delete_os_folders(
     handle: AppHandle,
     os_folders: Vec<OsFolder>,
+    mut user: Option<User>,
 ) -> Result<(), DatabaseError> {
     let app_data_dir = handle.path().app_data_dir()?;
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
@@ -453,6 +588,14 @@ pub fn delete_os_folders(
             .try_collect()?;
 
         for vid in videos {
+            if let Some(ref mut user) = user {
+                if let Some(lwv) = &user.last_watched_video {
+                    if vid.path == lwv.path {
+                        user.last_watched_video = None;
+                    }
+                }
+            }
+
             rwtx.remove(vid)?;
         }
 
@@ -470,12 +613,20 @@ pub fn delete_os_folders(
         rwtx.remove(folder)?;
     }
 
+    if let Some(user) = user {
+        rwtx.upsert(user)?;
+    }
+
     rwtx.commit()?;
 
     Ok(())
 }
 
-pub fn delete_os_videos(handle: &AppHandle, os_videos: Vec<OsVideo>) -> Result<(), DatabaseError> {
+pub fn delete_os_videos(
+    handle: &AppHandle,
+    os_videos: Vec<OsVideo>,
+    mut user: Option<User>,
+) -> Result<(), DatabaseError> {
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().open(&DBMODELS, db_path)?;
 
@@ -489,16 +640,54 @@ pub fn delete_os_videos(handle: &AppHandle, os_videos: Vec<OsVideo>) -> Result<(
             .try_collect()?;
 
         for vid in videos {
+            if let Some(ref mut user) = user {
+                if let Some(lwv) = &user.last_watched_video {
+                    if vid.path == lwv.path {
+                        user.last_watched_video = None;
+                    }
+                }
+            }
+
             vid._delete_cover_img()?;
             rwtx.remove(vid)?;
+        }
+
+        if let Some(ref mut user) = user {
+            if let Some(lwv) = &user.last_watched_video {
+                if vid.path == lwv.path {
+                    user.last_watched_video = None;
+                }
+            }
         }
 
         rwtx.remove(vid)?;
     }
 
+    if let Some(user) = user {
+        rwtx.upsert(user)?;
+    }
+
     rwtx.commit()?;
 
     Ok(())
+}
+
+#[command]
+pub fn create_default_user(handle: AppHandle) -> Result<User, DatabaseError> {
+    let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
+    let db = Builder::new().create(&DBMODELS, db_path)?;
+
+    let rtx = db.rw_transaction()?;
+    let user = User {
+        id: "1".into(),
+        username: "default".into(),
+        settings: Settings::default(),
+        last_watched_video: None,
+    };
+
+    rtx.upsert(user.clone())?;
+    rtx.commit()?;
+    Ok(user)
 }
 
 #[command]
