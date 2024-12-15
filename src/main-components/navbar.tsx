@@ -9,37 +9,37 @@ import { A, useNavigate } from "@solidjs/router";
 
 export default function NavBar() {
 
-	const navigate = useNavigate();
-	
+  const navigate = useNavigate();
+
   return (
-    <nav class="sm:px-2 md:px-16 lg:px-36 xl:px-44 w-full h-8 bg-primary shadow-md z-[100]">
-      <ul class="h-full w-full flex flex-row items-center justify-between">
+    <nav class="z-[100] h-8 w-full bg-primary shadow-md sm:px-2 md:px-16 lg:px-36 xl:px-44">
+      <ul class="flex h-full w-full flex-row items-center justify-between">
         <Sheet>
-          <div class="flex flex-row h-full">
-            <li class="px-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer"
-						onClick={() => navigate(-1)}
-					>
-              <IconArrowNarrowLeftDashed class="text-secondary fill-accent stroke-[2]" />
+          <div class="flex h-full flex-row">
+            <li class="flex h-full cursor-pointer flex-row items-center justify-center px-1 transition-colors hover:bg-accent"
+              onClick={() => navigate(-1)}
+            >
+              <IconArrowNarrowLeftDashed class="fill-accent stroke-[2] text-secondary" />
             </li>
             <SheetTrigger class="h-full outline-none">
-              <li class="px-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
-                <IconMenu class="text-secondary fill-accent stroke-[2]" />
+              <li class="flex h-full cursor-pointer flex-row items-center justify-center px-1 transition-colors hover:bg-accent">
+                <IconMenu class="fill-accent stroke-[2] text-secondary" />
               </li>
             </SheetTrigger>
           </div>
-          <SheetContent side="top" class="p-0 sm:px-2 md:px-16 lg:px-36 xl:px-44  flex justify-center items-center border-none">
-            <ul class="h-full w-full flex flex-row items-center">
-              <li class="p-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
+          <SheetContent side="top" class="flex items-center justify-center border-none p-0 sm:px-2 md:px-16 lg:px-36 xl:px-44">
+            <ul class="flex h-full w-full flex-row items-center">
+              <li class="flex h-full cursor-pointer flex-row items-center justify-center p-1 transition-colors hover:bg-accent">
                 <A href="/dashboard">
-                  <IconChalkboard class="text-secondary fill-accent stroke-[1.5]" />
+                  <IconChalkboard class="fill-accent stroke-[1.5] text-secondary" />
                 </A>
               </li>
-              <li class="p-1 w-5 h-full flex flex-row justify-center items-center">
+              <li class="flex h-full w-5 flex-row items-center justify-center p-1">
               </li>
-              <li class="p-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
-                <IconList class="text-secondary fill-accent stroke-[2]" />
+              <li class="flex h-full cursor-pointer flex-row items-center justify-center p-1 transition-colors hover:bg-accent">
+                <IconList class="fill-accent stroke-[2] text-secondary" />
               </li>
-              <li class="p-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
+              <li class="flex h-full cursor-pointer flex-row items-center justify-center p-1 transition-colors hover:bg-accent">
                 <svg xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24" fill="none" stroke-width="1.5"
                   stroke-linecap="round" stroke-linejoin="round" class="h-6 w-auto stroke-secondary p-0.5">
@@ -52,13 +52,13 @@ export default function NavBar() {
             </ul>
           </SheetContent>
         </Sheet>
-        <div class="w-fit flex flex-row h-full">
-          <li class="px-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
-            <IconDeviceDesktopAnalytics class="text-secondary fill-accent stroke-[1.5]" />
+        <div class="flex h-full w-fit flex-row">
+          <li class="flex h-full cursor-pointer flex-row items-center justify-center px-1 transition-colors hover:bg-accent">
+            <IconDeviceDesktopAnalytics class="fill-accent stroke-[1.5] text-secondary" />
           </li>
-          <li class="px-1 h-full flex flex-row justify-center items-center hover:bg-accent transition-colors cursor-pointer">
+          <li class="flex h-full cursor-pointer flex-row items-center justify-center px-1 transition-colors hover:bg-accent">
             <A href="/settings/default">
-              <IconAdjustments class="text-secondary fill-accent stroke-[1.5]" />
+              <IconAdjustments class="fill-accent stroke-[1.5] text-secondary" />
             </A>
           </li>
         </div>
