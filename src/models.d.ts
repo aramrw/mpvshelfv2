@@ -2,6 +2,7 @@ export type UserType = {
   id: string;
   username: string;
   settings: SettingsType;
+  last_watched_video: OsVideo | undefined;
 }
 
 export type SettingsType = {
@@ -35,7 +36,7 @@ export type OsVideo = {
   path: string;
   title: string;
   cover_img_path: string | undefined;
-	metadata: FileMetadata;
+  metadata: FileMetadata;
   watched: bool;
   duration: number;
   position: number;
@@ -52,10 +53,12 @@ export type FileMetadata = {
 
 export type FolderMetadata = {
   contains: FolderContains;
-	size: number;
+  size: number;
 }
 
 export type FolderContains = {
   files: number;
   folders: number;
 }
+
+export type SortType = "none" | "updated";
