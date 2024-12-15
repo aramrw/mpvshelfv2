@@ -4,7 +4,7 @@ use tauri::path::BaseDirectory;
 use tauri::{command, AppHandle, Manager};
 
 use crate::database::data::v1::{OsFolder, OsVideo, User};
-use crate::database::{update_os_folders, update_os_videos};
+use crate::database::{update_os_folders, update_os_videos, update_user};
 use crate::error::{MpvError, MpvStdoutError};
 use crate::fs::{find_video_index, normalize_path};
 use crate::tray::build_window;
@@ -145,77 +145,82 @@ pub async fn play_video(
     main_folder: OsFolder,
     mut os_videos: Vec<OsVideo>,
     video: OsVideo,
-    user: User,
-) -> Result<(), MpvError> {
-    let webv_window = match handle.get_webview_window("main") {
-        Some(win) => win,
-        None => return Err(MpvError::WebviewWindowNotFound(String::from("main"))),
-    };
-    let last_url = webv_window.url()?;
-    let last_url = format!("{}#video_title={}", last_url.as_str(), video.title);
+    mut user: User,
+) {
+    (|| -> Result<(), MpvError> {
+        let webv_window = match handle.get_webview_window("main") {
+            Some(win) => win,
+            None => return Err(MpvError::WebviewWindowNotFound(String::from("main"))),
+        };
+        let last_url = webv_window.url()?;
+        let last_url = format!("{}#video_title={}", last_url.as_str(), video.title);
 
-    webv_window.close()?;
-    let parent_path = match Path::new(&video.path).parent() {
-        Some(pp) => pp,
-        None => return Err(MpvError::InvalidPathName(video.path)),
-    };
+        webv_window.close()?;
+        let parent_path = match Path::new(&video.path).parent() {
+            Some(pp) => pp,
+            None => return Err(MpvError::InvalidPathName(video.path)),
+        };
 
-    let video_index = find_video_index(parent_path, video.path.clone())?;
-    let mpvshelf_plugins = handle
-        .path()
-        .resolve("resources/mpvshelf.lua", BaseDirectory::Resource)?;
+        let video_index = find_video_index(parent_path, video.path.clone())?;
+        let mpvshelf_plugins = handle
+            .path()
+            .resolve("resources/mpvshelf.lua", BaseDirectory::Resource)?;
 
-    let mut args = Vec::new();
-    if user.settings.autoplay {
-        args = vec![
-            format!("--playlist-start={video_index}"),
-            format!("--playlist={}", parent_path.to_string_lossy()),
-        ];
-    }
+        let mut args = Vec::new();
+        if user.settings.autoplay {
+            args = vec![
+                format!("--playlist-start={video_index}"),
+                format!("--playlist={}", parent_path.to_string_lossy()),
+            ];
+        }
 
-    args.extend([
-        format!("--script={}", mpvshelf_plugins.to_string_lossy()),
-        format!("--title={} | mpvshelf", main_folder.title),
-    ]);
+        args.extend([
+            format!("--script={}", mpvshelf_plugins.to_string_lossy()),
+            format!("--title={} | mpvshelf", main_folder.title),
+        ]);
 
-    let status = spawn_mpv(&args, user.settings.mpv_path)?;
-    let output = status.wait_with_output()?;
-    let data = parse_mpv_stdout(output.stdout.clone()).unwrap();
+        let status = spawn_mpv(&args, user.settings.mpv_path.as_deref())?;
+        let output = status.wait_with_output()?;
+        let data = parse_mpv_stdout(output.stdout.clone())?;
 
-    //println!("{:#?}", data);
-    let mut main_folder_clone = main_folder.clone();
-    let mut last_watched_video = None; // Track the last updated video
+        //println!("{:#?}", data);
+        let mut main_folder_clone = main_folder.clone();
+        let mut last_watched_video = None; // Track the last updated video
 
-    // Iterate through all entries in `data`, each representing a video path, duration, and position
-    for entry in &data {
-        let video_path = &entry.last_video_path;
+        // Iterate through all entries in `data`, each representing a video path, duration, and position
+        for entry in &data {
+            let video_path = &entry.last_video_path;
 
-        // Iterate through all videos in `os_videos` and update those that match the path
-        for vid in &mut os_videos.iter_mut() {
-            if vid.path == *video_path {
-                vid.watched = true;
-                vid.position = entry.last_video_position;
-                vid.duration = entry.last_video_duration;
+            // Iterate through all videos in `os_videos` and update those that match the path
+            for vid in &mut os_videos.iter_mut() {
+                if vid.path == *video_path {
+                    vid.watched = true;
+                    vid.position = entry.last_video_position;
+                    vid.duration = entry.last_video_duration;
 
-                // Track this as the last watched video
-                last_watched_video = Some(vid.clone());
+                    // Track this as the last watched video
+                    last_watched_video = Some(vid.clone());
+                }
             }
         }
-    }
 
-    // Assign the tracked last watched video (if any)
-    main_folder_clone.last_watched_video = last_watched_video;
+        // Assign the tracked last watched video (if any)
+        main_folder_clone.last_watched_video = last_watched_video.clone();
+        user.last_watched_video = last_watched_video;
 
-    // Continue with the update
-    update_os_videos(handle.clone(), os_videos)?;
-    update_os_folders(handle.clone(), vec![main_folder_clone])?;
+        // Continue with the update
+        update_os_videos(handle.clone(), os_videos)?;
+        update_os_folders(handle.clone(), vec![main_folder_clone])?;
+        update_user(user, handle.clone())?;
 
-    build_window(handle, Some(last_url.as_str()))?;
+        build_window(handle, Some(last_url.as_str()))?;
 
-    Ok(())
+        Ok(())
+    })()
+    .unwrap();
 }
 
-pub fn spawn_mpv(args: &[String], mpv_path: Option<String>) -> Result<Child, MpvError> {
+pub fn spawn_mpv(args: &[String], mpv_path: Option<&str>) -> Result<Child, MpvError> {
     let mpv_exe = mpv_path.as_deref().unwrap_or("mpv");
 
     let child = Command::new(mpv_exe)
