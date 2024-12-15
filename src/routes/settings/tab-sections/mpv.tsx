@@ -36,7 +36,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from '@tauri-apps/api/event'
 import Spinner from "../../../main-components/icons/spinner";
-import update_user from "../../../tauri-cmds/update-user";
+import update_user from "../../../tauri-cmds/user/update-user";
 
 
 export default function MpvTabSection({ user }: { user: UserType }) {

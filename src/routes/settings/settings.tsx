@@ -21,7 +21,7 @@ import {
 // } from "../../components/ui/textfield";
 import { useParams, Params } from "@solidjs/router";
 import MpvTabSection from "./tab-sections/mpv";
-import get_default_user from "../../tauri-cmds/users";
+import get_default_user from "../../tauri-cmds/user/get_default_user";
 import { UserType } from "../../models";
 import { IconAdjustments, IconUserFilled } from "@tabler/icons-solidjs";
 import IconMpv from "../../main-components/icons/icon-mpv";
@@ -59,11 +59,11 @@ export default function Settings() {
       <Transition
         appear={true}
         onEnter={(el, done) => {
-          const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600 });
+          const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
           a.finished.then(done);
         }}
         onExit={(el, done) => {
-          const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600 });
+          const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
           a.finished.then(done);
         }}
       >
