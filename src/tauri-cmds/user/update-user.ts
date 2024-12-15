@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { UserType } from "../models";
+import { UserType } from "../../models";
 
 export default async function update_user(user: UserType) {
   try {
