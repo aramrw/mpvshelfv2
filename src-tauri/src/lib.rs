@@ -1,6 +1,6 @@
 #![feature(iterator_try_collect)]
 
-use database::init_database;
+use database::{create_default_user, init_database};
 use tauri::Manager;
 use tray::kill_dup_process;
 
@@ -52,6 +52,7 @@ pub fn run() {
             play_video,
             download_mpv_binary,
             upsert_read_os_dir,
+            create_default_user,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
