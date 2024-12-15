@@ -1,5 +1,6 @@
 import { Component, createMemo, } from "solid-js";
 import { OsVideo } from "../../models";
+import { bytesToMB, formatPosition, getTitle, splitTitleDots } from "./desc-util";
 
 interface VideoDescProps {
   video: () => OsVideo | null;
@@ -8,49 +9,12 @@ interface VideoDescProps {
 }
 
 export const VideoDescription: Component<VideoDescProps> = (props) => {
-  // Check if the video is an OsFolder by inspecting the last_read_panel or other properties unique to OsFolder
-  const getTitle = (title: string | undefined): [string, string] => {
-    if (!title) return ["No Title", "No File Type"];
-    const parts = title.split("."); // Split by dots
-    // Get the file type (extension) — the last part after the last dot
-    const ft = parts.length > 1 ? parts.pop()! : "No File Type";
-    // Join the remaining parts with spaces
-    const nTitle = parts.join(" ");
-    return [nTitle, ft];
-  };
-
-  const getTitlesFromPath = (title: string | undefined): [string, string] => {
-    if (!title) return ["No panel", "No parent"];
-
-    // Split by both '/' and '\' using a regex
-    const parts = title.split(/[\\/]/);
-
-    // Get the file type (extension) — the part after the last dot
-    const panel = parts.pop();
-    const parent = parts.pop();
-    if (!panel || !parent) return ["No panel", "No parent"];
-    else return [panel, parent];
-  };
-
-  const formatPosition = (pos: number | undefined, dur: number | undefined): [string, string] => {
-    if (!pos && !dur) return ["0", "0"];
-    const toMinutesAndSeconds = (value: number): number => Math.floor(value / 60) + (value % 60) / 100;
-    return [
-      toMinutesAndSeconds(pos ? pos : 0).toString().replace(".", ":"),
-      toMinutesAndSeconds(dur ? dur : 0).toString().replace(".", ":")];
-  };
-
-  const bytesToMB = (bytes: number | undefined): string => {
-    if (!bytes) return "0mb";
-    const mb = bytes / (1024 * 1024); // Convert bytes to MB
-    return `${mb.toFixed(2)}mb`; // Format to 2 decimal places
-  };
 
   // Create a derived signal for the formatted values
   const formatData = createMemo(() => {
     const videoData = props.video();
     const position = formatPosition(videoData?.position, videoData?.duration);
-    const [titleText, extension] = getTitle(videoData?.title);
+    const [titleText, extension] = splitTitleDots(videoData?.title);
     const size = bytesToMB(videoData?.metadata.size);
 
     return {
@@ -71,10 +35,10 @@ export const VideoDescription: Component<VideoDescProps> = (props) => {
     >
       <div class="flex flex-col w-full">
         <div class="flex flex-row">
-          <p class="text-lg lg:text-xl font-semibold text-zinc-100 bg-transparent mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5 underline">
+          <p class="text-sm font-semibold text-zinc-100 mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5">
             {formatData().titleText}
           </p>
-          <p class="text-[13px] font-medium text-zinc-300 bg-transparent mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5">
+          <p class="text-xs font-medium text-zinc-300 mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5">
             .{formatData().extension}
           </p>
         </div>
