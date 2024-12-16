@@ -27,18 +27,24 @@ const LibraryVideoCard = ({
     <Transition
       appear={true}
       onEnter={(el, done) => {
-        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
+        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
         a.finished.then(done);
       }}
       onExit={(el, done) => {
-        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
+        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
         a.finished.then(done);
       }}
     >
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            class="group relative flex h-52 w-full min-w-52 max-w-[450px] cursor-pointer items-center justify-center overflow-hidden rounded-sm border-[2px] border-primary/80 shadow-md shadow-black/50 transition-all will-change-transform xl:h-60"
+            class="group relative flex 
+						h-52 w-full min-w-52 max-w-[450px] 
+						cursor-pointer 
+						items-center justify-center 
+						overflow-hidden rounded-none border-[2px] 
+						border-primary/80 shadow-md shadow-black/50 
+						transition-all will-change-transform xl:h-60"
             onClick={onClick}
           >
             <div

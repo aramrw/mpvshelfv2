@@ -31,24 +31,33 @@ export default function ({
     <Transition
       appear={true}
       onEnter={(el, done) => {
-        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150 });
         a.finished.then(done);
       }}
       onExit={(el, done) => {
-        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
+        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150 });
         a.finished.then(done);
       }}
     >
-      <header class="min-h-96 sm:px-2 md:px-16 lg:px-30 xl:px-40 w-full h-fit py-3 px-2 relative">
-        <Show when={mainParentFolder() && user()}>
-          <Show when={mainParentFolder() && mainParentFolder()?.last_watched_video?.cover_img_path}>
+      <header
+        class="h-fit w-full py-3 px-2 relative
+				sm:px-2 md:px-16 lg:px-30 xl:px-40">
+        <Show
+          when={mainParentFolder() && user()}>
+          <Show
+            when={mainParentFolder()
+              && mainParentFolder()?.last_watched_video?.cover_img_path}
+          >
             <div
               class="absolute inset-0 z-0"
               style={{
                 "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),
 						url(${mainParentFolder()?.last_watched_video ?
-                    escapeCSSUrl(convertFileSrc(mainParentFolder()?.last_watched_video?.cover_img_path!)) :
-                    escapeCSSUrl(convertFileSrc(mainParentFolder()?.cover_img_path!))})`,
+                    escapeCSSUrl(
+                      convertFileSrc(mainParentFolder()?.last_watched_video?.cover_img_path!)) :
+                    escapeCSSUrl(
+                      convertFileSrc(mainParentFolder()?.cover_img_path!))
+                  })`,
                 "background-size": "cover",
                 "background-repeat": "no-repeat",
                 "background-position": "start",

@@ -34,7 +34,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   return (
-    <main>
+    <main class="relative h-[100dvh] w-full overflow-auto" style={{ "scrollbar-gutter": "stable" }}>
       <NavBar />
       <Show when={error()}>
         <ErrorAlert error={error()!} onClick={() => navigate(`/settings/mpv_ERROR_${error()}`)} />
@@ -69,6 +69,7 @@ export default function Dashboard() {
           </div>
         </Show>
       </section>
+      <div class="w-full h-7 bg-popover shadow-sm my-1.5" />
     </main>
   );
 }

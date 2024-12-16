@@ -36,9 +36,19 @@ const AddNewSkeleton = ({
 
       <Popover placement="right-start">
         <PopoverTrigger class="h-fit w-fit">
-          <div class="relative flex w-fit cursor-pointer items-center justify-center transition-opacity duration-100 ease-in-out hover:opacity-50">
+          <div
+            class="relative flex w-fit 
+						cursor-pointer items-center justify-center 
+						transition-opacity duration-75 
+						ease-in-out hover:opacity-70">
             <div
-              class="h-32 w-24 rounded-sm bg-white shadow-md sm:h-44 sm:w-32 md:h-48 md:w-36 lg:h-64 lg:w-48 xl:h-80 xl:w-56" />
+              class="h-32 w-24 rounded-sm bg-white 
+							shadow-md 
+							sm:h-44 sm:w-32 
+							md:h-48 md:w-36 
+							lg:h-64 lg:w-48 
+							xl:h-80 xl:w-56"
+            />
             <Show when={!isCreating()}
               fallback={
                 <IconLoader2 class="absolute bottom-0 left-0 right-0 top-0 m-auto h-9 w-9 animate-spin stroke-[1.8] text-zinc-300 sm:h-11 sm:w-11 md:h-14 md:w-14 lg:h-20 lg:w-20 xl:h-24 xl:w-24"
@@ -52,7 +62,7 @@ const AddNewSkeleton = ({
         </PopoverTrigger>
         <PopoverContent class="flex flex-col items-center justify-center border-none bg-transparent p-0 text-sm font-medium shadow-none">
           <ul class="flex h-full w-fit flex-col gap-1">
-            <li class="flex w-fit cursor-pointer flex-row items-center justify-center gap-0.5 rounded-sm bg-white p-1 shadow-md transition-opacity duration-100 ease-in-out hover:opacity-50"
+            <li class="flex w-fit cursor-pointer flex-row items-center justify-center gap-0.5 rounded-sm bg-white p-1 shadow-md transition-opacity duration-75 ease-in-out hover:opacity-70"
               onClick={async () => {
                 setIsCreating(true);
                 let dir_path = await open({ directory: true });
@@ -65,7 +75,7 @@ const AddNewSkeleton = ({
             >
               <IconFolderPlus class="h-6 w-6 fill-zinc-500 stroke-[2.2] text-primary sm:h-8 sm:w-8 md:h-9 md:w-9 lg:h-10 lg:w-10" />
             </li>
-            <li class="flex w-fit cursor-pointer flex-row items-center justify-center gap-0.5 rounded-sm bg-white p-1 shadow-md transition-opacity duration-100 ease-in-out hover:opacity-50"
+            <li class="flex w-fit cursor-pointer flex-row items-center justify-center gap-0.5 rounded-sm bg-white p-1 shadow-md transition-opacity duration-75 ease-in-out hover:opacity-70"
             >
               <IconFilePlus class="h-6 w-6 fill-zinc-500 stroke-[2.2] text-primary sm:h-8 sm:w-8 md:h-9 md:w-9 lg:h-10 lg:w-10" />
             </li>

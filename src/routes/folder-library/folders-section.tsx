@@ -3,6 +3,7 @@ import { OsFolder, UserType } from "../../models";
 import LibraryFolderCard from "./folder-card";
 import { useNavigate } from "@solidjs/router";
 import { Platform } from "@tauri-apps/plugin-os";
+import { Transition } from "solid-transition-group";
 
 export default function LibraryFoldersSection({
   user,
@@ -21,7 +22,7 @@ export default function LibraryFoldersSection({
   return (
     <>
       <section
-        class="md:px-4 overflow-hidden w-full h-fit px-2 pb-4 relative 
+        class="md:px-16 lg:px-32 xl:px-56 overflow-hidden w-full h-fit px-2 pb-4 relative 
 				border-b-white border-b-2 shadow-lg shadow-primary/10">
         <ul
           class="mx-auto h-fit w-fit grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 

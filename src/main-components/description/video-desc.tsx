@@ -30,12 +30,24 @@ export const VideoDescription: Component<VideoDescProps> = (props) => {
 
   return (
     <div
-      class={`absolute inset-0 z-50 h-full w-full max-w-full bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-start justify-between text-white px-2.5 py-1.5 backdrop-blur-sm select-none cursor-pointer ${props.className}`}
+      class={
+        `absolute inset-0 z-50 h-full w-full 
+						max-w-full bg-black/80 opacity-0 
+						group-hover:opacity-100 transition-all duration-75 
+						flex flex-col items-start justify-between 
+						text-white px-4 py-3
+						backdrop-blur-sm select-none 
+						cursor-pointer ${props.className}`
+      }
       onClick={props.onClick}
     >
       <div class="flex flex-col w-full">
         <div class="flex flex-row">
-          <p class="text-sm font-semibold text-zinc-100 mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5">
+          <p class="
+						text-base lg:text-lg xl:text-xl
+							font-semibold underline 
+							text-zinc-100 mix-blend-difference 
+							w-fit z-10 shadow-2xl rounded-none px-0.5">
             {formatData().titleText}
           </p>
           <p class="text-xs font-medium text-zinc-300 mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5">

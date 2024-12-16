@@ -1,4 +1,5 @@
 #![feature(iterator_try_collect)]
+#![allow(unused)]
 
 use database::{create_default_user, init_database};
 use tauri::Manager;

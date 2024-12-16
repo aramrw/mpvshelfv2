@@ -596,7 +596,6 @@ pub fn normalize_path(path: &str) -> PathBuf {
 pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Result<u32, MpvError> {
     //println!("looking for selected video: {selected_video_path}");
     let mut media_files: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
-        .par_bridge()
         .filter_map(|entry| entry.ok())
         .collect();
     media_files.retain(|entry| {

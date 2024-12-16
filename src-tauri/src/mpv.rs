@@ -8,11 +8,11 @@ use crate::database::{update_os_folders, update_os_videos, update_user};
 use crate::error::{MpvError, MpvStdoutError};
 use crate::fs::{find_video_index, normalize_path};
 use crate::tray::build_window;
-use std::io;
 use std::num::ParseIntError;
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
+use std::{io, time};
 
 pub static EPISODE_TITLE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     regex::Regex::new(
@@ -147,6 +147,7 @@ pub async fn play_video(
     video: OsVideo,
     mut user: User,
 ) {
+    let instant = time::Instant::now();
     (|| -> Result<(), MpvError> {
         let webv_window = match handle.get_webview_window("main") {
             Some(win) => win,
@@ -180,15 +181,18 @@ pub async fn play_video(
         ]);
 
         let status = spawn_mpv(&args, user.settings.mpv_path.as_deref())?;
+        println!(
+            "it took {:.2}ms until mpv was spawned",
+            instant.elapsed().as_millis()
+        );
         let output = status.wait_with_output()?;
-        let data = parse_mpv_stdout(output.stdout.clone())?;
+        let parsed_stdout = parse_mpv_stdout(output.stdout.clone())?;
 
         //println!("{:#?}", data);
         let mut main_folder_clone = main_folder.clone();
         let mut last_watched_video = None; // Track the last updated video
 
-        // Iterate through all entries in `data`, each representing a video path, duration, and position
-        for entry in &data {
+        for entry in &parsed_stdout {
             let video_path = &entry.last_video_path;
 
             // Iterate through all videos in `os_videos` and update those that match the path
@@ -198,7 +202,7 @@ pub async fn play_video(
                     vid.position = entry.last_video_position;
                     vid.duration = entry.last_video_duration;
 
-                    // Track this as the last watched video
+                    // track this as the last watched video
                     last_watched_video = Some(vid.clone());
                 }
             }

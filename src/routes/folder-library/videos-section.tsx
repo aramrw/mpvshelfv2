@@ -30,8 +30,10 @@ export default function LibraryVideosSection({
 				border-b-white border-b-2 shadow-lg shadow-primary/10"
         >
           <ul
-            class="mx-auto h-fit w-fit grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 md:px-12 lg:grid-cols-3
-					xl:grid-cols-3 gap-6 justify-center items-center"
+            class="mx-auto 
+						h-fit w-fit justify-center items-center
+						grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 md:px-12 lg:grid-cols-3
+						xl:grid-cols-3 gap-6"
           >
             <For each={osVideos()}>
               {(video, index) => (

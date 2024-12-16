@@ -12,6 +12,7 @@ import LibraryFoldersSection from "./folders-section";
 import get_os_folders_by_path from "../../tauri-cmds/os_folders/get_os_folders_by_path";
 import upsert_read_os_dir from "../../tauri-cmds/os_folders/upsert_read_os_dir";
 import { platform } from "@tauri-apps/plugin-os";
+import { Transition } from "solid-transition-group";
 
 export default function Library() {
   const params = useParams();
@@ -84,41 +85,42 @@ export default function Library() {
             osVideos={osVideos}
             currentPlatform={currentPlatform}
           />
-          <TabsList class="h-9 w-full border">
+          
+            <TabsList class="h-9 w-full border">
+              <Show when={osVideos()}>
+                <TabsTrigger value="videos" class="flex w-fit flex-row gap-x-0.5 lg:text-base">
+                  Videos
+                  <IconDeviceTvFilled class="h-auto w-3 p-0" />
+                </TabsTrigger>
+              </Show>
+              <Show when={childFolders()}>
+                <TabsTrigger value="folders" class="folders flex w-fit flex-row gap-x-0.5 lg:text-base">
+                  Folders
+                  <IconFolderFilled class="ml-0.5 w-3 stroke-[2.4px]" />
+                </TabsTrigger>
+              </Show>
+              <TabsIndicator />
+            </TabsList>
             <Show when={osVideos()}>
-              <TabsTrigger value="videos" class="flex w-fit flex-row gap-x-0.5 lg:text-base">
-                Videos
-                <IconDeviceTvFilled class="h-auto w-3 p-0" />
-              </TabsTrigger>
+              <TabsContent value="videos">
+                <LibraryVideosSection
+                  mutate={mutateVideos}
+                  mainParentFolder={mainParentFolder}
+                  osVideos={osVideos}
+                  user={user}
+                />
+              </TabsContent>
             </Show>
             <Show when={childFolders()}>
-              <TabsTrigger value="folders" class="folders flex w-fit flex-row gap-x-0.5 lg:text-base">
-                Folders
-                <IconFolderFilled class="ml-0.5 w-3 stroke-[2.4px]" />
-              </TabsTrigger>
+              <TabsContent value="folders">
+                <LibraryFoldersSection
+                  user={user}
+                  mainParentFolder={mainParentFolder}
+                  childFolders={childFolders}
+                  currentPlatform={currentPlatform}
+                />
+              </TabsContent>
             </Show>
-            <TabsIndicator />
-          </TabsList>
-          <Show when={osVideos()}>
-            <TabsContent value="videos">
-              <LibraryVideosSection
-                mutate={mutateVideos}
-                mainParentFolder={mainParentFolder}
-                osVideos={osVideos}
-                user={user}
-              />
-            </TabsContent>
-          </Show>
-          <Show when={childFolders()}>
-            <TabsContent value="folders">
-              <LibraryFoldersSection
-                user={user}
-                mainParentFolder={mainParentFolder}
-                childFolders={childFolders}
-                currentPlatform={currentPlatform}
-              />
-            </TabsContent>
-          </Show>
         </Show>
       </Tabs>
     </main>

@@ -36,13 +36,13 @@ const OsVideoCard = ({
       appear={true}
       onEnter={(el, done) => {
         const a = el.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: 300
+          duration: 100
         });
         a.finished.then(done);
       }}
       onExit={(el, done) => {
         const a = el.animate([{ opacity: 1 }, { opacity: 0 }], {
-          duration: 300
+          duration: 100
         });
         a.finished.then(done);
       }}
