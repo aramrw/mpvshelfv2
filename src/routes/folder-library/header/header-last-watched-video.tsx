@@ -1,6 +1,6 @@
 import { Platform } from "@tauri-apps/plugin-os";
 import { ContextMenu, ContextMenuTrigger } from "../../../components/ui/context-menu";
-import { calcTimestampAvg } from "../video-card";
+import { calcTimestampAvg } from "../video/video-card";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { VideoDescription } from "../../../main-components/description/video-desc";
 import play_video from "../../../tauri-cmds/mpv/play_video";
@@ -66,8 +66,8 @@ export default function HeaderLastWatchedVideo({
             style={{
               top: "50%",
               left: "50%",
-						// Center the Play button within the image
-              transform: "translate(-50%, -50%)", 
+              // Center the Play button within the image
+              transform: "translate(-50%, -50%)",
             }}
             xmlns="http://www.w3.org/2000/svg"
             width="30"

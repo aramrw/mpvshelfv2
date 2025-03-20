@@ -1,4 +1,4 @@
-import { OsFolder, OsVideo } from "../../models";
+import { OsFolder, OsVideo } from "../../../models";
 import { Accessor, batch, Resource, Setter, Show } from "solid-js";
 import {
   ContextMenuContent,
@@ -7,13 +7,13 @@ import {
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
-} from "../../components/ui/context-menu";
+} from "../../../components/ui/context-menu";
 import { Platform } from "@tauri-apps/plugin-os";
-import show_in_folder from "../../tauri-cmds/os_folders/show_in_explorer";
+import show_in_folder from "../../../tauri-cmds/os_folders/show_in_explorer";
 import { IconChevronDown, IconChevronUp, IconFolderSearch } from "@tabler/icons-solidjs";
-import IconHeroEye from "../../main-components/icons/icon-hero-eye";
-import { update_os_videos } from "../../tauri-cmds/os_videos/update_os_videos";
-import IconHeroSlashEye from "../../main-components/icons/icon-hero-slasheye";
+import IconHeroEye from "../../../main-components/icons/icon-hero-eye";
+import { update_os_videos } from "../../../tauri-cmds/os_videos/update_os_videos";
+import IconHeroSlashEye from "../../../main-components/icons/icon-hero-slasheye";
 
 export default function VideoCardContextMenu({
   folder,

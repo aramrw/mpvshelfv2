@@ -1,12 +1,12 @@
-import { OsFolder, OsVideo } from "../../models";
+import { OsFolder, OsVideo } from "../../../models";
 import { Accessor, Resource, Setter, Show } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { ContextMenu, ContextMenuTrigger } from "../../components/ui/context-menu";
+import { ContextMenu, ContextMenuTrigger } from "../../../components/ui/context-menu";
 import { Transition } from "solid-transition-group";
 import { IconReload } from "@tabler/icons-solidjs";
 import VideoCardContextMenu from "./video-cm";
 import { Platform } from "@tauri-apps/plugin-os";
-import { VideoDescription } from "../../main-components/description/video-desc";
+import { VideoDescription } from "../../../main-components/description/video-desc";
 
 const LibraryVideoCard = ({
   index,
@@ -38,7 +38,7 @@ const LibraryVideoCard = ({
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            class="group relative flex 
+            class="group relative flex bg-black
 						h-52 w-full min-w-52 max-w-[450px] 
 						cursor-pointer 
 						items-center justify-center 

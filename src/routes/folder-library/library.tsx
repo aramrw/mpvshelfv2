@@ -1,6 +1,6 @@
 import { useParams } from "@solidjs/router";
 import LibraryHeader from "./header/header";
-import LibraryVideosSection from "./videos-section";
+import LibraryVideosSection from "./video/videos-section";
 import { batch, createEffect, createResource, createSignal, Show } from "solid-js";
 import NavBar from "../../main-components/navbar";
 import get_user_by_id from "../../tauri-cmds/user/get_user_by_id";
@@ -8,7 +8,7 @@ import { get_os_videos } from "../../tauri-cmds/os_videos/get_os_videos";
 import get_os_folder_by_path from "../../tauri-cmds/os_folders/get_os_folder_by_path";
 import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { IconDeviceTvFilled, IconFolderFilled } from "@tabler/icons-solidjs";
-import LibraryFoldersSection from "./folders-section";
+import LibraryFoldersSection from "./folder/folders-section";
 import get_os_folders_by_path from "../../tauri-cmds/os_folders/get_os_folders_by_path";
 import upsert_read_os_dir from "../../tauri-cmds/os_folders/upsert_read_os_dir";
 import { platform } from "@tauri-apps/plugin-os";

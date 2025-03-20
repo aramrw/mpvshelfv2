@@ -31,11 +31,14 @@ export default function CreateProfile() {
       id: "1",
       username: user().username,
       settings: {
+        mpv_settings: {
+          autoplay: true,
+        },
         user_id: "1",
-        autoplay: true,
         update_date: "",
         update_time: "",
-      }
+      },
+      last_watched_video: undefined,
     };
     invoke("update_user", { user: dbUser }).then(() => {
       navigate("/dashboard");

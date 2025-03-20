@@ -1,14 +1,13 @@
-import { OsFolder, } from "../../models";
+import { OsFolder, } from "../../../models";
 import { Accessor, createEffect, Resource, Show } from "solid-js";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   ContextMenu,
   ContextMenuTrigger,
-} from "../../components/ui/context-menu";
+} from "../../../components/ui/context-menu";
 import { Transition } from "solid-transition-group";
-import { IconFolderFilled } from "@tabler/icons-solidjs";
-import { FolderDescription } from "../../main-components/description/folder-desc";
-import GenericContextMenu from "../../main-components/generic-context-menu";
+import { FolderDescription } from "../../../main-components/description/folder-desc";
+import GenericContextMenu from "../../../main-components/generic-context-menu";
 import { Platform } from "@tauri-apps/plugin-os";
 
 const LibraryFolderCard = ({
@@ -29,7 +28,7 @@ const LibraryFolderCard = ({
     <ContextMenu>
       <ContextMenuTrigger>
         <div class="h-56 max-w-[450px] cursor-pointer relative w-full border-[1.5px] 
-						border-primary/80 rounded-sm shadow-black/30 shadow-md flex items-center 
+						border-primary/80 rounded-[2.5px] blur-0 shadow-black/100 shadow-md flex items-center 
 						justify-center overflow-hidden will-change-transform transition-all group"
           onClick={onClick}
         >
