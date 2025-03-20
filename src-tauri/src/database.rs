@@ -7,7 +7,7 @@ use std::{
 };
 
 use chrono::{NaiveDateTime, NaiveTime};
-use data::v1::{OsFolder, OsFolderKey, OsVideo, OsVideoKey, Settings, User};
+use data::v1::{MpvSettings, OsFolder, OsFolderKey, OsVideo, OsVideoKey, Settings, User};
 use native_db::*;
 use rayon::slice::ParallelSliceMut;
 use tauri::{command, AppHandle, Manager};
@@ -157,23 +157,35 @@ pub mod data {
         pub struct Settings {
             #[primary_key]
             pub user_id: String,
-            pub mpv_path: Option<String>,
-            pub plugins_path: Option<String>,
-            pub autoplay: bool,
+            pub mpv_settings: MpvSettings,
             pub update_date: String,
             pub update_time: String,
+        }
+
+        #[derive(Serialize, Deserialize, Clone, Debug)]
+        pub struct MpvSettings {
+            pub exe_path: Option<String>,
+            pub config_path: Option<String>,
+            pub plugins_path: Option<String>,
+            pub autoplay: bool,
         }
     }
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        let (update_date, update_time) = get_date_time();
-        Self {
-            user_id: "1".into(),
-            mpv_path: None,
+        let mpv_settings = MpvSettings {
+            exe_path: None,
+            config_path: None,
             plugins_path: None,
             autoplay: true,
+        };
+
+        let (update_date, update_time) = get_date_time();
+
+        Self {
+            user_id: "1".into(),
+            mpv_settings,
             update_date,
             update_time,
         }

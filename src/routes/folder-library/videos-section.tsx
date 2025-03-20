@@ -38,7 +38,7 @@ export default function LibraryVideosSection({
             <For each={osVideos()}>
               {(video, index) => (
                 <LibraryVideoCard
-                  index={index}
+                  index={() => index() + 1}
                   video={video}
                   mainParentFolder={mainParentFolder}
                   currentPlatform={currentPlatform}

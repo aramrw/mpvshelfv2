@@ -1,5 +1,5 @@
 import { OsFolder, UserType } from "../../models";
-import { Accessor, Setter, Show } from "solid-js";
+import { Accessor, Show } from "solid-js";
 import {
   ContextMenuContent,
   ContextMenuItem,

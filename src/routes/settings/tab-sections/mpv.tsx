@@ -20,7 +20,7 @@ import { IconFolderSearch } from "@tabler/icons-solidjs";
 import { Platform, platform } from '@tauri-apps/plugin-os';
 import { open as openShell } from "@tauri-apps/plugin-shell";
 import { open } from "@tauri-apps/plugin-dialog";
-import { UserType } from "../../../models";
+import { MpvSettingsType, UserType } from "../../../models";
 import { appDataDir as getAppDataDir, join } from '@tauri-apps/api/path';
 import { Accessor, createResource, createSignal, onCleanup, onMount, Setter, Show } from "solid-js";
 import {
@@ -72,11 +72,16 @@ export default function MpvTabSection({ user }: { user: UserType }) {
         <CardHeader>
           <CardTitle>
             <IconMpv class="w-4 stroke-[2.4px]" />
-            mpv Settings
+            Mpv Settings
           </CardTitle>
           <CardDescription class="flex flex-col gap-2 items-start">
-            Tweak mpv player's config, plugins, behavior, & more.
-            <DownloadMpvAlertDialog user={user} platform={currentPlatform} downloadPercent={downloadPercent} setDownloadPercent={setDownloadPercent} />
+            Tweak Mpv player's config, plugins, & behavior.
+            <DownloadMpvAlertDialog
+              user={user}
+              platform={currentPlatform}
+              downloadPercent={downloadPercent}
+              setDownloadPercent={setDownloadPercent}
+            />
           </CardDescription>
         </CardHeader>
         <CardContent class="w-fit">
@@ -92,8 +97,8 @@ export default function MpvTabSection({ user }: { user: UserType }) {
                 <TextFieldLabel>Plugins</TextFieldLabel>
                 <div class="flex flex-row justify-center items-center">
                   <TextField class="rounded-r-none z-10 ml-0"
-                    placeholder={user.settings.plugins_path
-                      ? user.settings.plugins_path
+                    placeholder={user.settings.mpv_settings.plugins_path
+                      ? user.settings.mpv_settings.plugins_path
                       : appDataDir.latest} />
                   <Button variant="outline" class=" border border-l-0 rounded-none rounded-r-sm p-0"
                     onClick={async () => {
@@ -112,18 +117,22 @@ export default function MpvTabSection({ user }: { user: UserType }) {
           </div>
           <FilePickerTextField
             platform={currentPlatform}
-            label={"mpv"}
+            label={"Mpv"}
             extensions={["exe"]}
             filterName={"mpv"}
-            placeholder={user.settings.mpv_path}
-            defaultPath={user.settings.mpv_path
-              ? user.settings.mpv_path
+            placeholder={user.settings.mpv_settings.exe_path}
+            defaultPath={user.settings.mpv_settings.exe_path
+              ? user.settings.mpv_settings.exe_path
               : appDataDir.latest}
           />
           <Switch
-            checked={user.settings.autoplay}
-            class="w-fit shadow-sm my-3 flex flex-row justify-between items-center gap-2 rounded-sm p-2 border">
-            <label class="font-medium text-xs">Autoplay</label>
+            checked={user.settings.mpv_settings.autoplay}
+            class="w-fit shadow-sm my-3 
+						flex flex-row justify-between items-center gap-2 rounded-sm p-2 border">
+            <label
+              class="font-medium text-xs">
+              Autoplay
+            </label>
             <SwitchControl>
               <SwitchThumb />
             </SwitchControl>
@@ -186,38 +195,49 @@ function DownloadMpvAlertDialog({
   downloadPercent: Accessor<number>;
   setDownloadPercent: Setter<number>;
 }) {
+  console.log(user);
   const [isOpen, setIsOpen] = createSignal(false); // Track the open state
 
   const handleDownload = async () => {
     setIsOpen(true);
-    let downloadPath = await invoke("download_mpv_binary");
 
-    const newUser: UserType = {
-      ...user,
+    // Invoke the download function and get the path
+    const downloadPath = await invoke("download_mpv_binary");
+
+    // Create a new user object with updated settings
+    const newUser = {
+      ...user, // Copy existing user properties
       settings: {
-        ...user.settings,
-        mpv_path: downloadPath as string
-      }
+        ...user.settings, // Copy existing settings
+        mpv_settings: {
+          ...user.settings.mpv_settings, // Copy mpv_settings
+          exe_path: downloadPath as string, // Update exe_path
+        },
+      },
     };
 
+		console.log(newUser);
+
+    // Call the update_user function with the new user object
     await update_user(newUser);
+
+    // Reset UI state
     setIsOpen(false);
     setDownloadPercent(0);
   };
-
   return (
     <>
       <AlertDialog open={isOpen()} onOpenChange={setIsOpen}>
         <AlertDialogTrigger>
           <Button variant="outline" class="text-xs p-0.5 px-1">
-            Download mpv
+            Download Mpv
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent class="bg-popover" data-open={isOpen() ? "true" : "false"}>
           <AlertDialogHeader>
             <AlertDialogTitle class="underline w-fit">
-              <Show when={downloadPercent() > 0} fallback="Download mpv Player?">
-                Downloading mpv Player for ({platform}).
+              <Show when={downloadPercent() > 0} fallback="Download Mpv Player?">
+                Downloading Mpv Player for ({platform}).
               </Show>
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -236,7 +256,11 @@ function DownloadMpvAlertDialog({
               </Show>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Show when={downloadPercent() === 0} fallback={<div class="w-full flex justify-end"><Spinner /></div>}>
+          <Show when={downloadPercent() === 0}
+            fallback={
+              <div class="w-full flex justify-end">
+                <Spinner />
+              </div>}>
             <AlertDialogFooter>
               <AlertDialogClose
                 onClick={() => {

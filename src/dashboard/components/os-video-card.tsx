@@ -55,7 +55,7 @@ const OsVideoCard = ({
               class="
 							w-52 h-52
 							md:h-60 md:w-60
-							lg:h-80 lg:w-80
+							lg:h-64 lg:w-64
 							rounded-sm shadow-md bg-white 
 							flex items-center justify-center overflow-hidden relative will-change-transform "
               onClick={() => {

@@ -29,7 +29,7 @@ export const CardTitle: ParentComponent<ComponentProps<"h1">> = (props) => {
 
 	return (
 		<h1
-			class={cn("select-none flex flex-row items-center gap-0.5 w-fit px-1 rounded-sm font-semibold leading-none tracking-tight text-lg", local.class)}
+			class={cn("select-none flex flex-row items-center gap-0.5 w-fit px-1 rounded-sm font-semibold leading-none tracking-tight text-base", local.class)}
 			{...rest}
 		/>
 	);

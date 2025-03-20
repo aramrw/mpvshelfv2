@@ -30,7 +30,7 @@ export default function LibraryFoldersSection({
           <For each={childFolders()}>
             {(folder, index) => (
               <LibraryFolderCard
-                index={index}
+                index={() => index() + 1}
                 folder={folder}
                 mainParentFolder={mainParentFolder}
                 currentPlatform={currentPlatform}

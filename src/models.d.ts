@@ -7,12 +7,16 @@ export type UserType = {
 
 export type SettingsType = {
   user_id: string;
-  mpv_path?: string;
-  plugins_path?: string;
-  autoplay: boolean;
+  mpv_settings: MpvSettings;
   update_date: string;
   update_time: string;
-}
+};
+
+export type MpvSettingsType = {
+  exe_path: string | undefined;
+  plugins_path?: string;
+  autoplay: boolean;
+};
 
 export type UserFormType = {
   username: string;

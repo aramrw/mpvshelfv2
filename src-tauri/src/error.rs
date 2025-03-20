@@ -53,11 +53,9 @@ pub enum ReadDirError {
 
 #[derive(thiserror::Error, Debug)]
 pub enum MpvError {
-    #[error("MPV Player was not found on the System PATH.")]
-    SudoPATHNotFound,
-    #[error("MPV Player was not found @ the specified path: {0}")]
+    #[error("Mpv Player was not found at: {0}")]
     AbsolutePathNotFound(String),
-    #[error("Failed to execute MPV Player: {0}")]
+    #[error("Failed to execute Mpv Player: {0}")]
     IoError(#[from] io::Error),
     #[error("{0:#?}")]
     TuariError(#[from] tauri::Error),

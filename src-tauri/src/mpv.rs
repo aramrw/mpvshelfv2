@@ -110,30 +110,19 @@ impl MpvPlaybackData {
 
 #[command]
 pub fn mpv_system_check(mpv_path: Option<String>) -> Result<(), MpvError> {
-    let mpv_exe = mpv_path.as_deref().unwrap_or("mpv");
+    let mpv_exe = mpv_path.as_deref().unwrap_or("mpv").to_string();
 
-    let output = Command::new(mpv_exe).arg("--version").output();
+    let output = Command::new(&mpv_exe).arg("--version").output();
     match output {
         Ok(output) => {
             if output.status.success() {
                 Ok(())
             } else {
-                // Distinguish based on provided absolute path or system PATH
-                if let Some(abs_path) = mpv_path {
-                    if abs_path.is_empty() {
-                        return Err(MpvError::AbsolutePathNotFound(abs_path));
-                    }
-                }
-                Err(MpvError::SudoPATHNotFound)
+                Err(MpvError::AbsolutePathNotFound(mpv_exe))
             }
         }
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            if let Some(abs_path) = mpv_path {
-                if abs_path.is_empty() {
-                    return Err(MpvError::AbsolutePathNotFound(abs_path));
-                }
-            }
-            Err(MpvError::SudoPATHNotFound)
+            Err(MpvError::AbsolutePathNotFound(mpv_exe))
         }
         Err(e) => Err(MpvError::IoError(e)),
     }
@@ -168,7 +157,7 @@ pub async fn play_video(
             .resolve("resources/mpvshelf.lua", BaseDirectory::Resource)?;
 
         let mut args = Vec::new();
-        if user.settings.autoplay {
+        if user.settings.mpv_settings.autoplay {
             args = vec![
                 format!("--playlist-start={video_index}"),
                 format!("--playlist={}", parent_path.to_string_lossy()),
@@ -180,7 +169,7 @@ pub async fn play_video(
             format!("--title={} | mpvshelf", main_folder.title),
         ]);
 
-        let status = spawn_mpv(&args, user.settings.mpv_path.as_deref())?;
+        let status = spawn_mpv(&args, user.settings.mpv_settings.exe_path.as_deref())?;
         println!(
             "it took {:.2}ms until mpv was spawned",
             instant.elapsed().as_millis()
@@ -225,7 +214,7 @@ pub async fn play_video(
 }
 
 pub fn spawn_mpv(args: &[String], mpv_path: Option<&str>) -> Result<Child, MpvError> {
-    let mpv_exe = mpv_path.as_deref().unwrap_or("mpv");
+    let mpv_exe = mpv_path.unwrap_or("mpv");
 
     let child = Command::new(mpv_exe)
         .args(args)

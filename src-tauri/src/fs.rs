@@ -605,8 +605,7 @@ pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Resu
                     if let Some(extension_str) = extension.to_str() {
                         let extension_str = extension_str.to_lowercase();
                         return SUPPORTED_VIDEO_FORMATS.get_key(&extension_str).is_some()
-                            || SUPPORTED_AUDIO_FORMATS.get_key(&extension_str).is_some()
-                            || SUPPORTED_SUBTITLE_FORMATS.get_key(&extension_str).is_some();
+                            || SUPPORTED_AUDIO_FORMATS.get_key(&extension_str).is_some();
                     }
                 }
             }

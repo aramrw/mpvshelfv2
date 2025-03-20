@@ -17,22 +17,58 @@ interface ErrorAlertProps {
 }
 
 function ErrorAlert(props: ErrorAlertProps) {
-  const [title, def] = props.error.split(":");
+  // Handle Windows paths and error messages appropriately
+  const parseErrorMessage = (error: string) => {
+    // First, try to match a Windows path pattern
+    const windowsPathMatch = error.match(/^([A-Za-z]:\\[^:]+):(.*)/);
+    if (windowsPathMatch) {
+      return {
+        title: windowsPathMatch[1], // Full Windows path
+        description: windowsPathMatch[2].trim() // Rest of the error message
+      };
+    }
+
+    // If not a Windows path, split on first colon only
+    const firstColonIndex = error.indexOf(':');
+    if (firstColonIndex === -1) {
+      return {
+        title: error,
+        description: ''
+      };
+    }
+
+    return {
+      title: error.slice(0, firstColonIndex),
+      description: error.slice(firstColonIndex + 1).trim()
+    };
+  };
+
   const [dialogOpen, setDialogOpen] = createSignal<boolean>(true);
+  const { title, description } = parseErrorMessage(props.error);
 
   return (
     <AlertDialog open={dialogOpen()}>
       <AlertDialogTrigger />
-      <AlertDialogContent class="min-h-40 min-w-40 border-destructive border-2">
+      <AlertDialogContent class="bg-accent min-h-40 min-w-40 
+				border-destructve-foreground border-2">
         <AlertDialogHeader class="space-y-0">
-          <h1 class="mb-4 text-2xl font-semibold bg-destructive w-fit rounded-sm text-destructive-foreground p-1">Error</h1>
-          <AlertDialogTitle class="text-md w-full">
-            <code>
-              {title}
-            </code>
+          <h1 class="mb-4 text-md font-semibold bg-destructive 
+						w-fit rounded-sm text-destructive-foreground px-1">
+            Error
+          </h1>
+          <AlertDialogTitle
+            class="text-md w-full text-destructive-foreground 
+						bg-muted/30 px-2 rounded-sm rounded-b-none py-0"
+          >
+            <code>{title} : </code>
           </AlertDialogTitle>
-          <AlertDialogDescription class="font-medium rounded-sm p-2 w-fit">
-            {def}.
+          <AlertDialogDescription
+            class="font-medium w-full text-white px-2 pb-1 
+						bg-muted/30 rounded-sm rounded-t-none"
+          >
+            <code>
+              {description}
+            </code>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -42,10 +78,14 @@ function ErrorAlert(props: ErrorAlertProps) {
               <Button
                 variant="destructive"
                 class="min-w-14 bg-destructive text-destructive-foreground hover:bg-primary"
-                onClick={() => setDialogOpen(false)}>
+                onClick={() => setDialogOpen(false)}
+              >
                 Close
-              </Button>}>
+              </Button>
+            }
+          >
             <AlertDialogAction
+              class="bg-destructive hover:bg-red-600"
               onClick={props.onClick}
             >
               Continue
@@ -56,6 +96,5 @@ function ErrorAlert(props: ErrorAlertProps) {
     </AlertDialog>
   );
 }
-
 export default ErrorAlert;
 
