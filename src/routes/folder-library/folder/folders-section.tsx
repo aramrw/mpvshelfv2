@@ -1,5 +1,5 @@
 import { For, Resource } from "solid-js";
-import { OsFolder, UserType } from "../../models";
+import { OsFolder, UserType } from "../../../models";
 import LibraryFolderCard from "./folder-card";
 import { useNavigate } from "@solidjs/router";
 import { Platform } from "@tauri-apps/plugin-os";

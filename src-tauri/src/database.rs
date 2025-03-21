@@ -8,6 +8,7 @@ use std::{
 
 use chrono::{NaiveDateTime, NaiveTime};
 use data::v1::{MpvSettings, OsFolder, OsFolderKey, OsVideo, OsVideoKey, Settings, User};
+use hashbrown::HashMap;
 use native_db::*;
 use rayon::slice::ParallelSliceMut;
 use tauri::{command, AppHandle, Manager};
@@ -359,6 +360,15 @@ impl OsVideo {
         }
         Ok(())
     }
+
+    pub fn as_hashmap<I, F, K>(iter: I, key_fn: F) -> HashMap<K, Self>
+    where
+        I: IntoIterator<Item = Self>,
+        F: Fn(&Self) -> K,
+        K: Eq + std::hash::Hash,
+    {
+        iter.into_iter().map(|item| (key_fn(&item), item)).collect()
+    }
 }
 
 // sort type
@@ -499,17 +509,18 @@ pub fn update_os_folders(
 ) -> Result<(), DatabaseError> {
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().open(&DBMODELS, db_path)?;
-    let rtx = db.rw_transaction()?;
+    let rwtx = db.rw_transaction()?;
     let (date, time) = get_date_time();
 
     for mut folder in os_folders {
         folder.update_date = date.clone();
         folder.update_time = time.clone();
 
-        rtx.upsert(folder)?;
+        //dbg!(&folder);
+        rwtx.upsert(folder)?;
     }
 
-    rtx.commit()?;
+    rwtx.commit()?;
 
     Ok(())
 }

@@ -179,7 +179,7 @@ pub async fn play_video(
 
         //println!("{:#?}", data);
         let mut main_folder_clone = main_folder.clone();
-        let mut last_watched_video = None; // Track the last updated video
+        let mut last_watched_video = main_folder.last_watched_video.clone(); // Track the last updated video
 
         for entry in &parsed_stdout {
             let video_path = &entry.last_video_path;
@@ -228,21 +228,17 @@ pub fn spawn_mpv(args: &[String], mpv_path: Option<&str>) -> Result<Child, MpvEr
 fn parse_mpv_stdout(stdout: Vec<u8>) -> Result<Vec<MpvPlaybackData>, MpvStdoutError> {
     let output_str = String::from_utf8(stdout)?;
 
-    // Split the output by the keyword "Playing", which indicates the start of each new part
+    // split output by "Playing" indicates the start of each new part
     let parts: Vec<String> = output_str
         .split("Playing")
         .skip(1) // skip the first part before the first "Playing"
         .map(|part| format!("Playing{}", part.trim())) // re-add the "Playing" to each part
         .collect();
 
-    // Process each part in parallel
     let data: Result<Vec<MpvPlaybackData>, MpvStdoutError> = parts
-        .into_par_iter() // Parallel iteration
-        .map(|part| {
-            // Handle each part, and propagate errors correctly using Result
-            handle_mpv_stdout_section(part)
-        })
-        .collect(); // Collect the results into a Result<Vec<_>, _>
+        .into_par_iter()
+        .map(|part| handle_mpv_stdout_section(part))
+        .collect();
 
     data
 }
@@ -262,10 +258,10 @@ fn handle_mpv_stdout_section(sect: String) -> Result<MpvPlaybackData, MpvStdoutE
         }
     }
 
-    // Then find the last actual timestamp (going backwards)
+    // find last actual timestamp (going backwards)
     for line in sect.lines().rev() {
         if line.starts_with("Exiting...") || line.starts_with("Saving state.") {
-            continue; // Skip these lines as they might appear after the final timestamp
+            continue; // skip these lines they might come after the final timestamp
         }
         if let Some(whole_duration) = line.strip_prefix("AV: ") {
             let parts: Vec<&str> = whole_duration.split('/').map(str::trim).collect();
@@ -274,7 +270,7 @@ fn handle_mpv_stdout_section(sect: String) -> Result<MpvPlaybackData, MpvStdoutE
                     data.update_timestamp(TimestampType::Position, parts[0].to_string())?;
                     data.update_timestamp(TimestampType::Duration, duration.trim().to_string())?;
                     found_timestamp = true;
-                    break; // Stop after finding the first (last) valid timestamp
+                    break; // stop after finding the first (last) valid timestamp
                 }
             }
         }
@@ -289,8 +285,8 @@ fn handle_mpv_stdout_section(sect: String) -> Result<MpvPlaybackData, MpvStdoutE
     // and then exit mpv on the video that plays after
     if !found_timestamp {
         // Set default values for already watched videos
-        data.update_timestamp(TimestampType::Position, "00:10:00".to_string())?;
-        data.update_timestamp(TimestampType::Duration, "00:10:00".to_string())?;
+        data.update_timestamp(TimestampType::Position, "??:??:??".to_string())?;
+        data.update_timestamp(TimestampType::Duration, "??:??:??".to_string())?;
         println!(
             "Warning: No timestamp found for '{}', using default values.",
             data.last_video_path

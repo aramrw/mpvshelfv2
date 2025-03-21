@@ -4,7 +4,7 @@
 	"version": "0.0.3",
 	"identifier": "com.mpvshelfv2.dev",
 	"build": {
-		"beforeDevCommand": "npm dev",
+		"beforeDevCommand": "npm run dev",
 		"devUrl": "http://localhost:1420",
 		"beforeBuildCommand": "pnpm build",
 		"frontendDist": "../dist"
