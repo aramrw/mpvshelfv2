@@ -24,7 +24,7 @@ export default function Library() {
 
   const [osVideos, { mutate: mutateVideos, refetch: refetchChildVideos }] = createResource(
     () => (mainParentFolder() ? mainParentFolder()?.path : null),
-    (parentPath: string) => get_os_videos(parentPath).catch((e) => {
+    (parentPath: string) => get_os_videos(parentPath, "episode_title_regex").catch((e) => {
       if (!e.includes("0")) {
         console.error(e);
       }
