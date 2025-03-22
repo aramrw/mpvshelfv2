@@ -1,10 +1,11 @@
-import { createSignal, For, Resource, Setter, Show } from "solid-js";
+import { createSignal, For, Resource, Setter, Show, onMount } from "solid-js";
 import { OsFolder, OsVideo, UserType } from "../../../models";
 import LibraryVideoCard from "./video-card";
 import play_video from "../../../tauri-cmds/mpv/play_video";
 import ErrorAlert from "../../../main-components/error-alert";
 import { platform } from "@tauri-apps/plugin-os";
 import { Transition } from "solid-transition-group";
+import { cn } from "../../../libs/cn";
 
 export default function LibraryVideosSection({
   user,
@@ -15,10 +16,17 @@ export default function LibraryVideosSection({
   user: Resource<UserType | null>;
   mainParentFolder: Resource<OsFolder | null>;
   osVideos: Resource<OsVideo[] | null>;
-  mutate: Setter<OsVideo[] | null | undefined>
+  mutate: Setter<OsVideo[] | null | undefined>;
 }) {
   const currentPlatform = platform();
   const [error, setError] = createSignal<string | null>();
+  let lastWatchedRef: HTMLLIElement | undefined;
+
+  // onMount(() => {
+  //   if (lastWatchedRef) {
+  //     lastWatchedRef.scrollIntoView({ behavior: "smooth", block: "center" });
+  //   }
+  // });
 
   return (
     <>
@@ -29,18 +37,20 @@ export default function LibraryVideosSection({
         appear={true}
         onEnter={(el, done) => {
           const a = el.animate([{ opacity: 0 }, { opacity: 1 }], {
-            duration: 300
+            duration: 300,
           });
           a.finished.then(done);
         }}
         onExit={(el, done) => {
           const a = el.animate([{ opacity: 1 }, { opacity: 0 }], {
-            duration: 300
+            duration: 0,
           });
           a.finished.then(done);
         }}
       >
-        <Show when={osVideos.state === "ready" && mainParentFolder.state === "ready"}>
+        <Show
+          when={osVideos.state === "ready" && mainParentFolder.state === "ready"}
+        >
           <section
             class="md:px-4 overflow-hidden w-full h-fit px-2 pb-4 pt-2 relative
 				border-b-white border-b-2 shadow-lg shadow-primary/10"
@@ -52,18 +62,36 @@ export default function LibraryVideosSection({
 						xl:grid-cols-3 gap-6"
             >
               <For each={osVideos()}>
-                {(video, index) => (
-                  <LibraryVideoCard
-                    index={() => index() + 1}
-                    video={video}
-                    mainParentFolder={mainParentFolder}
-                    currentPlatform={currentPlatform}
-                    mutate={mutate}
-                    onClick={async () => {
-                      await play_video(mainParentFolder()!, osVideos()!, video, user()!);
-                    }}
-                  />
-                )}
+                {(video, index) => {
+                  let isLastWatched =
+                    video.path === mainParentFolder()?.last_watched_video?.path;
+                  return (
+                    <li
+                      class={cn("",
+                        isLastWatched && "border-accent border-[5px] rounded-[1px]"
+                      )}
+                      ref={el => {
+                        if (isLastWatched) lastWatchedRef = el;
+                      }}
+                    >
+                      <LibraryVideoCard
+                        index={() => index() + 1}
+                        video={video}
+                        mainParentFolder={mainParentFolder}
+                        currentPlatform={currentPlatform}
+                        mutate={mutate}
+                        onClick={async () => {
+                          await play_video(
+                            mainParentFolder()!,
+                            osVideos()!,
+                            video,
+                            user()!
+                          );
+                        }}
+                      />
+                    </li>
+                  );
+                }}
               </For>
             </ul>
           </section>
@@ -72,3 +100,4 @@ export default function LibraryVideosSection({
     </>
   );
 }
+
