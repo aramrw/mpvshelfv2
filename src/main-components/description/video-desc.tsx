@@ -19,7 +19,7 @@ export const VideoDescription: Component<VideoDescProps> = (props) => {
     const size = bytesToMB(videoData?.metadata.size);
 
     return {
-			vid: videoData,
+      vid: videoData,
       position,
       titleText,
       extension,
@@ -45,16 +45,18 @@ export const VideoDescription: Component<VideoDescProps> = (props) => {
     >
       <div class="flex flex-col w-full">
         <div class="flex flex-row">
-          <p class="
+          <span class="
 						  text-base lg:text-lg xl:text-xl
 							font-semibold flex flex-row gap-0.5
-							text-zinc-100 mix-blend-difference 
+							text-zinc-100 mix-blend-difference justify-center items-start 
 							w-fit z-10 shadow-2xl rounded-none px-0.5">
-						<Show when={formatData().vid?.watched}>
-							<IconHeroEye class="w-4 h-auto opacity-70 mb-1" />
-						</Show>
-            {formatData().titleText}
-          </p>
+            <Show when={formatData().vid?.watched}>
+              <IconHeroEye class="w-fit h-[20px] lg:h-5 xl:h-6 opacity-70 pb-1" />
+            </Show>
+            <p class="">
+              {formatData().titleText}
+            </p>
+          </span>
           <p class="text-xs font-medium text-zinc-300 mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5">
             .{formatData().extension}
           </p>
