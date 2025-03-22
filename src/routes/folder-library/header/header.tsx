@@ -73,7 +73,7 @@ export default function ({
             <h2
               class="text-secondary mb-2 w-fit font-semibold z-15 relative
 					text-xs px-1 lg:text-md
-					bg-transparent mix-blend-color-dodge rounded-[2px]  border-secondary/50 border-[1.5px] shadow-md
+					bg-transparent mix-blend-hard-light rounded-[2px]  border-secondary/50 border-[1.5px] shadow-md
 					backdrop-blur-lg select-none cursor-default"
             >
               {mainParentFolder()?.update_date}
@@ -81,7 +81,7 @@ export default function ({
             <h3
               class="text-secondary mb-2 w-fit font-semibold z-15 relative
 					text-xs px-1 lg:text-md
-					bg-transparent mix-blend-color-dodge rounded-[2px]  border-secondary/50 border-[1.5px] shadow-md
+					bg-transparent mix-blend-hard-light rounded-[2px]  border-secondary/50 border-[1.5px] shadow-md
 					backdrop-blur-lg select-none cursor-default"
             >
               {mainParentFolder()?.update_time}
