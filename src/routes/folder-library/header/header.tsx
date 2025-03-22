@@ -28,11 +28,11 @@ export default function ({
     <Transition
       appear={true}
       onEnter={(el, done) => {
-        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150 });
+        const a = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
         a.finished.then(done);
       }}
       onExit={(el, done) => {
-        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150 });
+        const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
         a.finished.then(done);
       }}
     >
@@ -43,29 +43,24 @@ export default function ({
         <Show
           when={mainParentFolder() && user()}>
           <Show
-            when={mainParentFolder()
-              && mainParentFolder()?.last_watched_video?.cover_img_path}
-          >
-            <Show
-              when={mainParentFolder()?.last_watched_video?.cover_img_path || mainParentFolder()?.cover_img_path}>
-              <div
-                class="absolute inset-0 z-0"
-                style={{
-                  "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),
+            when={mainParentFolder()?.last_watched_video?.cover_img_path || mainParentFolder()?.cover_img_path}>
+            <div
+              class="absolute inset-0 z-0"
+              style={{
+                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),
 						url(${mainParentFolder()?.last_watched_video ?
-                      escapeCSSUrl(
-                        convertFileSrc(mainParentFolder()?.last_watched_video?.cover_img_path!))
-                      :
-                      escapeCSSUrl(
-                        convertFileSrc(mainParentFolder()?.cover_img_path!))
-                    })`,
-                  "background-size": "cover",
-                  "background-repeat": "no-repeat",
-                  "background-position": "start",
-                  filter: "blur(6px)",
-                }}
-              />
-            </Show>
+                    escapeCSSUrl(
+                      convertFileSrc(mainParentFolder()?.last_watched_video?.cover_img_path!))
+                    :
+                    escapeCSSUrl(
+                      convertFileSrc(mainParentFolder()?.cover_img_path!))
+                  })`,
+                "background-size": "cover",
+                "background-repeat": "no-repeat",
+                "background-position": "start",
+                filter: "blur(6px)",
+              }}
+            />
           </Show>
           <h1
             class="text-secondary/100 mix-blend-hard-light w-fit font-semibold z-10 relative
