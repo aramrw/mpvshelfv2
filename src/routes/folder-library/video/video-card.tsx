@@ -7,6 +7,7 @@ import { IconReload } from "@tabler/icons-solidjs";
 import VideoCardContextMenu from "./video-cm";
 import { Platform } from "@tauri-apps/plugin-os";
 import { VideoDescription } from "../../../main-components/description/video-desc";
+import { cn } from "../../../libs/cn";
 
 const LibraryVideoCard = ({
   index,
@@ -104,7 +105,9 @@ const LibraryVideoCard = ({
               when={!video.watched}
               fallback={
                 <IconReload
-                  class="absolute inset-0 bottom-0 left-0 z-10 m-auto h-auto w-[20%] scale-x-[-1] rounded-md bg-primary/70 p-1 text-secondary/80 opacity-80 mix-blend-hard-light shadow-md shadow-primary/20 transition-opacity duration-300 group-hover:opacity-0"
+                  class={cn("absolute inset-0 bottom-0 left-0 z-10 m-auto h-auto w-[20%] scale-x-[-1] rounded-md bg-primary/70 p-1 text-secondary/80 opacity-80 mix-blend-hard-light shadow-md shadow-primary/20 transition-opacity duration-300 group-hover:opacity-0",
+                    video.path == mainParentFolder()?.last_watched_video?.path && "opacity-100 bg-primary/90 text-secondary/90 mix-blend-normal"
+                  )}
                 />
               }
             >
