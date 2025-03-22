@@ -31,7 +31,7 @@ export default function LibraryFoldersSection({
         }}
         onExit={(el, done) => {
           const a = el.animate([{ opacity: 1 }, { opacity: 0 }], {
-            duration: 300
+            duration: 0
           });
           a.finished.then(done);
         }}
