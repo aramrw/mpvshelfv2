@@ -285,8 +285,8 @@ fn handle_mpv_stdout_section(sect: String) -> Result<MpvPlaybackData, MpvStdoutE
     // and then exit mpv on the video that plays after
     if !found_timestamp {
         // Set default values for already watched videos
-        data.update_timestamp(TimestampType::Position, "??:??:??".to_string())?;
-        data.update_timestamp(TimestampType::Duration, "??:??:??".to_string())?;
+        data.update_timestamp(TimestampType::Position, "00:00:00".to_string())?;
+        data.update_timestamp(TimestampType::Duration, "00:00:00".to_string())?;
         println!(
             "Warning: No timestamp found for '{}', using default values.",
             data.last_video_path

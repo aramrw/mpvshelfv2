@@ -70,7 +70,7 @@ const LibraryFolderCard = ({
 						shadow-sm shadow-black/50 
 						backdrop-blur-sm transition-all 
 						duration-75 will-change-auto 
-						group-hover:opacity-90"
+						group-hover:opacity-90 transform-gpu"
           >
             <p class="h-fit w-full border-b-2 border-secondary/10 p-1 text-center text-base font-bold">
               {index()}
