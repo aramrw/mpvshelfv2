@@ -579,7 +579,6 @@ pub fn get_os_videos(
 
     let sort_type = SortType::from_str(&sort_type)?;
     videos.par_sort_by(sort_type.sort());
-
     //println!("{:#?}", videos);
 
     Ok(videos)
