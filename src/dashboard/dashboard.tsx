@@ -58,7 +58,7 @@ export default function Dashboard() {
 
   const [osVideos] = createResource(
     () => (mainParentFolder()?.path ? mainParentFolder()?.path : null),
-    (parentPath: string) => get_os_videos(parentPath),
+    (parentPath: string) => get_os_videos(parentPath, "updated"),
   );
 
   return (
