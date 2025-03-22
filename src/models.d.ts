@@ -65,4 +65,4 @@ export type FolderContains = {
   folders: number;
 }
 
-export type SortType = "none" | "updated";
+export type SortType = "none" | "updated" | "episode_title_regex";
