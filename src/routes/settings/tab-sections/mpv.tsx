@@ -25,6 +25,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import Spinner from "../../../main-components/icons/spinner";
 import update_user from "../../../tauri-cmds/user/update-user";
+import show_in_folder from "../../../tauri-cmds/os_folders/show_in_explorer";
 
 export default function MpvTabSection({
   user,
@@ -90,7 +91,7 @@ export default function MpvTabSection({
             <FilePickerTextField
               platform={currentPlatform}
               label="Config"
-              extensions={["config"]}
+              extensions={["config", "conf"]}
               defaultPath={user.settings.mpv_settings.config_path || appDataDir.latest}
               value={mpvSettings().config_path}
               onFileSelected={(path) =>
@@ -159,7 +160,13 @@ type FilePickerTextFieldProps = {
 function FilePickerTextField(props: FilePickerTextFieldProps) {
   return (
     <TextFieldRoot>
-      <TextFieldLabel>{props.label}</TextFieldLabel>
+      <TextFieldLabel class="hover:bg-muted rounded-sm px-0.5 transition-colors"
+			onClick={() => {
+						show_in_folder(props.defaultPath ?? "");
+				}}
+			>
+				{props.label}
+			</TextFieldLabel>
       <div class="w-fit flex flex-row justify-center items-center">
         <TextField class="z-10 rounded-r-none" placeholder={props.value} />
         <Button

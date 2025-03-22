@@ -203,12 +203,24 @@ static DBMODELS: LazyLock<Models> = LazyLock::new(|| {
 
 pub fn init_database(app_data_dir: &PathBuf, handle: &AppHandle) -> Result<(), db_type::Error> {
     if !app_data_dir.exists() {
-        std::fs::create_dir(app_data_dir)?;
-        std::fs::create_dir(app_data_dir.join("frames"))?;
+        create_dir(app_data_dir)?;
     }
-    let plugins_dir = app_data_dir.join("plugins");
+    // path to store mpv frame imgs
+    let frames_dir = app_data_dir.join("frames");
+    if !frames_dir.exists() {
+        create_dir(frames_dir)?;
+    }
+    // path to store all mpv config
+    // https://mpv.io/manual/master/#files
+    let mut portable_config_dir_path = app_data_dir.join("portable_config");
+    let plugins_dir = portable_config_dir_path.join("plugins");
+
+    if !portable_config_dir_path.exists() {
+        create_dir(&portable_config_dir_path).unwrap();
+    }
+
     if !plugins_dir.exists() {
-        create_dir(plugins_dir).unwrap();
+        create_dir(&plugins_dir).unwrap();
     }
     let db_path = app_data_dir.join("main").with_extension("rdb");
     Builder::new().create(&DBMODELS, &db_path)?;
