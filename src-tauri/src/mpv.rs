@@ -156,13 +156,14 @@ pub async fn play_video(
             .path()
             .resolve("resources/mpvshelf.lua", BaseDirectory::Resource)?;
 
-        let mut args = Vec::new();
-        if user.settings.mpv_settings.autoplay {
-            args = vec![
+        let mut args = if user.settings.mpv_settings.autoplay {
+            vec![
                 format!("--playlist-start={video_index}"),
                 format!("--playlist={}", parent_path.to_string_lossy()),
-            ];
-        }
+            ]
+        } else {
+            vec![video.path]
+        };
 
         args.extend([
             format!("--script={}", mpvshelf_plugins.to_string_lossy()),
@@ -184,7 +185,8 @@ pub async fn play_video(
         for entry in &parsed_stdout {
             let video_path = &entry.last_video_path;
 
-            // Iterate through all videos in `os_videos` and update those that match the path
+            // Iterate through all videos in `os_videos`
+            // and update those that match the path
             for vid in &mut os_videos.iter_mut() {
                 if vid.path == *video_path {
                     vid.watched = true;
