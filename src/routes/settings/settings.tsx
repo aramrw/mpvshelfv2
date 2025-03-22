@@ -1,4 +1,4 @@
-import { createResource, createSignal, onMount, Show } from "solid-js";
+import { Accessor, createEffect, createResource, createSignal, onMount, Setter, Show } from "solid-js";
 import {
   Tabs,
   TabsIndicator,
@@ -9,13 +9,14 @@ import {
 import { useParams, Params } from "@solidjs/router";
 import MpvTabSection from "./tab-sections/mpv";
 import get_default_user from "../../tauri-cmds/user/get_default_user";
-import { UserType } from "../../models";
+import { SettingsType, UserType } from "../../models";
 import { IconAdjustments } from "@tabler/icons-solidjs";
 import IconMpv from "../../main-components/icons/icon-mpv";
 import ProfileTabSection from "./tab-sections/profile";
 import SettingsErrorCard from "./tab-sections/error-card";
 import NavBar from "../../main-components/navbar";
 import { Transition } from "solid-transition-group";
+import update_user from "../../tauri-cmds/user/update-user";
 
 const handleSettingParams = (params: Params): string[] | string => {
   // example param: mpv_ERROR_Error: This is a test Error.
@@ -39,6 +40,30 @@ export default function Settings() {
   const [selectedTab, setSelectedTab] =
     createSignal<string>(typeof params === "string" ? params : params[0]);
   const [user] = createResource<UserType | null>(get_default_user);
+  const [opts, setOpts] = createSignal<SettingsType | undefined>();
+
+  // Only set opts once when user is initially loaded:
+  createEffect(() => {
+    const u = user();
+    if (u && !opts()) {
+      setOpts(u.settings);
+    }
+  });
+
+
+  // When options change, update the user accordingly:
+  createEffect(async () => {
+    const currentUser = user();
+    const currentSettings = opts();
+    if (currentUser && currentSettings) {
+      // Only update if settings have changed
+      if (JSON.stringify(currentUser.settings) !== JSON.stringify(currentSettings)) {
+        console.log("updating user settings:\n", currentSettings);
+        await update_user({ ...currentUser, settings: currentSettings });
+      }
+    }
+  });
+
 
   return (
     <>
@@ -82,7 +107,7 @@ export default function Settings() {
           {errorMessage &&
             <SettingsErrorCard message={errorMessage}
             />
-					}
+          }
           <Tabs
             defaultValue="mpv"
             class="w-full"
@@ -94,15 +119,19 @@ export default function Settings() {
             <TabsList class="rounded-bl-lg w-40 min-w-20 h-fit">
               <TabsTrigger value="mpv">
                 Mpv
-                <IconMpv 
-									class="ml-0.5 w-3 stroke-[2.4px]" 
-								/>
+                <IconMpv
+                  class="ml-0.5 w-3 stroke-[2.4px]"
+                />
               </TabsTrigger>
               <TabsIndicator />
             </TabsList>
             <Show when={user.latest}>
               <ProfileTabSection user={user.latest!} />
-              <MpvTabSection user={user.latest!} />
+              <MpvTabSection
+                user={user.latest!}
+                opts={opts as Accessor<SettingsType>}
+                setOpts={setOpts as Setter<SettingsType>}
+              />
             </Show>
           </Tabs>
         </main>

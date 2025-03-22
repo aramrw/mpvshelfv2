@@ -14,6 +14,7 @@ export type SettingsType = {
 
 export type MpvSettingsType = {
   exe_path: string | undefined;
+	config_path: string | undefined;
   plugins_path?: string;
   autoplay: boolean;
 };
