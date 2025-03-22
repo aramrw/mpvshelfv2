@@ -7,6 +7,7 @@ import play_video from "../../../tauri-cmds/mpv/play_video";
 import GenericContextMenu from "../../../main-components/generic-context-menu";
 import { OsFolder, OsVideo, UserType } from "../../../models";
 import { Show } from "solid-js";
+import { Transition } from "solid-transition-group";
 
 export default function HeaderLastWatchedVideo({
   user,
@@ -23,7 +24,7 @@ export default function HeaderLastWatchedVideo({
   return (
     <ContextMenu>
       <ContextMenuTrigger
-        class="relative w-fit flex items-start gap-2 group cursor-pointer">
+        class=" relative w-fit flex items-start gap-2 group cursor-pointer">
         {/* Flex container for the image and SVG */}
         <Show when={mainParentFolder()?.title
           && mainParentFolder()?.last_watched_video && osVideos()}>
@@ -56,29 +57,45 @@ export default function HeaderLastWatchedVideo({
               w-auto z-30 p-2
               border-white/10 shadow-md"
           />
-          <svg
-            class="text-secondary 
+          <Transition
+            appear={true}
+            onEnter={(el, done) => {
+              const a = el.animate([{ opacity: 0 }, { opacity: 1 }], {
+                duration: 300
+              });
+              a.finished.then(done);
+            }}
+            onExit={(el, done) => {
+              const a = el.animate([{ opacity: 1 }, { opacity: 0 }], {
+                duration: 300
+              });
+              a.finished.then(done);
+            }}
+          >
+            <svg
+              class="text-secondary 
 							fill-secondary/80 bg-primary/70 rounded-sm 
 							transition-all duration-200
 							cursor-pointer h-auto w-1/4 p-1 
 							mix-blend-hard-light absolute z-50 
 							shadow-md shadow-primary/20"
-            style={{
-              top: "50%",
-              left: "50%",
-              // Center the Play button within the image
-              transform: "translate(-50%, -50%)",
-            }}
-            xmlns="http://www.w3.org/2000/svg"
-            width="30"
-            height="30"
-            viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polygon points="6 3 20 12 6 21 6 3" />
-          </svg>
+              style={{
+                top: "50%",
+                left: "50%",
+                // Center the Play button within the image
+                transform: "translate(-50%, -50%)",
+              }}
+              xmlns="http://www.w3.org/2000/svg"
+              width="30"
+              height="30"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polygon points="6 3 20 12 6 21 6 3" />
+            </svg>
+          </Transition>
           <VideoDescription
             video={() => mainParentFolder()?.last_watched_video!}
             onClick={async () => await play_video(
