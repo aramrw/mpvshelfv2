@@ -17,15 +17,15 @@ export const FolderDescription: Component<FolderDescriptionProps> = (props) => {
       class="absolute inset-0 z-50 h-full w-full max-w-full bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-75 flex flex-col items-start justify-between text-white px-2.5 py-1.5 backdrop-blur-sm rounded-sm"
       onClick={props.onClick}
     >
-      <div 
-				class="flex flex-col w-full">
+      <div
+        class="flex flex-col w-full">
         <div
-					class="text-wrap flex flex-row text-md 
+          class="text-wrap flex flex-row text-md 
 					xl:text-xl font-semibold text-zinc-100 
 					bg-transparent mix-blend-difference z-10 shadow-2xl rounded-none px-0.5">
           {folder?.title}
         </div>
-        <div class="flex flex-row">
+        <div class="flex flex-row justify-start items-end">
           <p class="text-sm font-semibold text-zinc-100 mix-blend-difference w-fit z-10 shadow-2xl rounded-none px-0.5">
             {lrp_title}
           </p>
