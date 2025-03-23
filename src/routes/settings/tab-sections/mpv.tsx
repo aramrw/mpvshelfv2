@@ -26,6 +26,9 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import Spinner from "../../../main-components/icons/spinner";
 import update_user from "../../../tauri-cmds/user/update-user";
 import show_in_folder from "../../../tauri-cmds/os_folders/show_in_explorer";
+const exportPortableConfig = () => {
+  invoke("export_portable_config");
+}
 
 export default function MpvTabSection({
   user,
@@ -50,7 +53,6 @@ export default function MpvTabSection({
     );
   });
 
-
   // !!!never touch this code!!!
   let unlisten: UnlistenFn | null;
   onMount(async () => {
@@ -64,6 +66,8 @@ export default function MpvTabSection({
     if (unlisten) unlisten();
   });
   // !!!never touch this code!!!
+
+
 
   return (
     <TabsContent value="mpv">
@@ -161,12 +165,12 @@ function FilePickerTextField(props: FilePickerTextFieldProps) {
   return (
     <TextFieldRoot>
       <TextFieldLabel class="hover:bg-muted rounded-sm px-0.5 transition-colors"
-			onClick={() => {
-						show_in_folder(props.defaultPath ?? "");
-				}}
-			>
-				{props.label}
-			</TextFieldLabel>
+        onClick={() => {
+          show_in_folder(props.defaultPath ?? "");
+        }}
+      >
+        {props.label}
+      </TextFieldLabel>
       <div class="w-fit flex flex-row justify-center items-center">
         <TextField class="z-10 rounded-r-none" placeholder={props.value} />
         <Button
@@ -231,11 +235,18 @@ function DownloadMpvAlertDialog(props: DownloadMpvAlertDialogProps) {
 
   return (
     <AlertDialog open={isOpen()} onOpenChange={setIsOpen}>
-      <AlertDialogTrigger>
-        <Button variant="outline" class="text-xs p-0.5 px-1">
-          Download Mpv
+      <div class="flex flex-row gap-1.5">
+        <AlertDialogTrigger>
+          <Button variant="outline" class="text-xs p-0.5 px-1">
+            Download Mpv
+          </Button>
+        </AlertDialogTrigger>
+        <Button variant="outline" class="text-xs p-0.5 px-1"
+          onClick={() => exportPortableConfig()}
+        >
+          Export Portable Config
         </Button>
-      </AlertDialogTrigger>
+      </div>
       <AlertDialogContent class="bg-popover" data-open={isOpen() ? "true" : "false"}>
         <AlertDialogHeader>
           <AlertDialogTitle class="bg-muted px-1 opacity-90 rounded-sm w-fit">

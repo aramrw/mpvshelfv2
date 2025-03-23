@@ -11,6 +11,7 @@ mod fs;
 mod misc;
 mod mpv;
 mod tray;
+mod data;
 
 use crate::database::{
     delete_os_folders, get_default_user, get_os_folder_by_path, get_os_folders,
@@ -20,6 +21,7 @@ use crate::database::{
 use crate::fs::{check_cover_img_exists, download_mpv_binary, show_in_folder, upsert_read_os_dir};
 use crate::mpv::{mpv_system_check, play_video};
 use crate::tray::init_tray;
+use crate::data::export_portable_config;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -54,6 +56,7 @@ pub fn run() {
             download_mpv_binary,
             upsert_read_os_dir,
             create_default_user,
+            export_portable_config,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
