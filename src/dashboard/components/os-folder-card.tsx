@@ -30,13 +30,13 @@ const OsFolderCard = ({
       appear={true}
       onEnter={(el, done) => {
         const a = el.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: 600
+          duration: 300
         });
         a.finished.then(done);
       }}
       onExit={(el, done) => {
         const a = el.animate([{ opacity: 1 }, { opacity: 0 }], {
-          duration: 600
+          duration: 300
         });
         a.finished.then(done);
       }}
@@ -50,8 +50,8 @@ const OsFolderCard = ({
 							h-32 w-24 
 							sm:h-44 sm:w-32 
 							md:h-48 md:w-36 
-							lg:h-64 lg:w-48
-							xl:h-80 xl:w-56 
+							lg:h-60 lg:w-48
+							xl:h-60 xl:w-48 
 							rounded-sm shadow-md bg-white 
 							flex items-center justify-center overflow-hidden relative will-change-transform "
               onClick={() => navigate(`/library/${encodeURIComponent(folder.path)}`)}

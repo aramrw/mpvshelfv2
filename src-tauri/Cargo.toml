@@ -1,11 +1,13 @@
 [package]
 name = "mpvshelfv2"
-version = "0.2.1"
+version = "0.0.3"
 description = "A macOS & windows folder wrapper to track and watch videos with mpv."
 authors = ["aramrw"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.dev.package."*"]
+opt-level = 2
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
@@ -31,9 +33,18 @@ phf = "0.11.2"
 tauri-plugin-os = "2"
 chrono = "0.4.38"
 regex = { version = "1.11.1", features = ["std", "perf"] }
-rayon = "1.10.0"
-reqwest = "0.12.9"
+rayon = { version = "1.10.0" }
+reqwest = { version = "0.12.9", features = ["stream"] }
 futures-util = "0.3.31"
-tokio = { version = "1.41.0", features = ["full"] }
+tokio = { version = "1.41.0", features = ["rt", "rt-multi-thread", "macros"] }
 sysinfo = "0.32.0"
 hashbrown = "0.15.1"
+zip = "2.4.2"
+zip-extensions = "0.8.1"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+
+

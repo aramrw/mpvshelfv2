@@ -19,6 +19,8 @@ pub enum MpvShelfError {
     Http(#[from] HttpClientError),
     #[error("{0}")]
     ReadDir(#[from] ReadDirError),
+    #[error("{0}")]
+    Ffmpeg(#[from] FfmpegError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -35,6 +37,8 @@ pub enum DatabaseError {
     IoError(#[from] io::Error),
     #[error("{0:#?}")]
     TuariError(#[from] tauri::Error),
+    #[error("{0}")]
+    SortType(#[from] SortTypeError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -49,11 +53,9 @@ pub enum ReadDirError {
 
 #[derive(thiserror::Error, Debug)]
 pub enum MpvError {
-    #[error("MPV Player was not found on the System PATH.")]
-    SudoPATHNotFound,
-    #[error("MPV Player was not found @ the specified path: {0}")]
+    #[error("Mpv Player was not found at: {0}")]
     AbsolutePathNotFound(String),
-    #[error("Failed to execute MPV Player: {0}")]
+    #[error("Failed to execute Mpv Player: {0}")]
     IoError(#[from] io::Error),
     #[error("{0:#?}")]
     TuariError(#[from] tauri::Error),
@@ -67,6 +69,19 @@ pub enum MpvError {
     DatabaseError(#[from] DatabaseError),
     #[error("{0}")]
     StdOutError(#[from] MpvStdoutError),
+}
+
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug)]
+pub enum FfmpegError {
+    #[error("{0}")]
+    Io(#[from] io::Error),
+    #[error("{0}")]
+    TauriPluginShell(#[from] tauri_plugin_shell::Error),
+    #[error("ffmpeg panicked: {0}")]
+    StdErr(String),
+    #[error("ffmpeg process ended abnormally without properly terminating - for instance, if it was forcefully killed or if there was a system-level interruption.")]
+    ProcessInterrupted,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -91,6 +106,18 @@ pub enum HttpClientError {
     Tuari(#[from] tauri::Error),
     #[error("{0:#?}")]
     Io(#[from] io::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum SortTypeError {
+    #[error("could not convert to SortType from &str: {0}")]
+    FromStr(String),
+}
+
+impl From<SortTypeError> for InvokeError {
+    fn from(error: SortTypeError) -> Self {
+        InvokeError::from_error(error)
+    }
 }
 
 impl From<ReadDirError> for InvokeError {

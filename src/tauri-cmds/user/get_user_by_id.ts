@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { UserType } from "src/models";
+import { UserType } from "../../models";
 
 export default async function get_user_from_id(userId: string) {
   try {

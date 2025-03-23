@@ -1,5 +1,8 @@
 use std::collections::HashSet;
+use std::io::Write;
+use std::os::windows::fs::MetadataExt;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 //use std::time::Instant;
 use futures_util::{StreamExt, TryStreamExt};
 use hashbrown::HashMap;
@@ -13,12 +16,12 @@ use std::{fs::read_dir, process::Command};
 use tauri_plugin_shell::process::CommandEvent;
 use tokio::io::AsyncWriteExt;
 
-use crate::database::data::v1::OsVideo;
+use crate::database::data::v1::{OsVideo, User};
 use crate::database::{data::v1::OsFolder, update_os_folders};
-use crate::database::{delete_os_folders, delete_os_videos, update_os_videos};
-use crate::error::{DatabaseError, MpvError, MpvShelfError, ReadDirError};
+use crate::database::{delete_os_folders, delete_os_videos, update_os_videos, HasPath, SortType};
+use crate::error::{DatabaseError, FfmpegError, MpvError, MpvShelfError, ReadDirError};
 use crate::misc::get_date_time;
-use crate::mpv::EPISODE_TITLE_REGEX;
+use crate::mpv::{MpvPlaybackData, EPISODE_TITLE_REGEX};
 use rayon::iter::ParallelIterator;
 use reqwest::Client;
 use tauri::{command, AppHandle, Emitter, Manager};
@@ -91,14 +94,11 @@ fn delete_stale_entries(
     handle: AppHandle,
     old_dirs: Vec<OsFolder>,
     old_vids: Vec<OsVideo>,
+    user: User,
 ) -> Result<(), DatabaseError> {
-    delete_os_folders(handle.clone(), old_dirs)?;
-    delete_os_videos(&handle, old_vids)?;
+    delete_os_folders(handle.clone(), old_dirs, Some(user.clone()))?;
+    delete_os_videos(&handle, old_vids, Some(user))?;
     Ok(())
-}
-
-pub trait HasPath {
-    fn path(&self) -> &str;
 }
 
 fn normalize_path_to_unix(path: impl AsRef<str>) -> String {
@@ -263,7 +263,7 @@ pub async fn upsert_read_os_dir(
     handle: AppHandle,
     dir: String,
     parent_path: Option<String>,
-    user_id: String,
+    user: User,
     mut old_dirs: Option<Vec<OsFolder>>,
     mut old_videos: Option<Vec<OsVideo>>,
 ) -> Result<bool, MpvShelfError> {
@@ -283,7 +283,12 @@ pub async fn upsert_read_os_dir(
     {
         if let Some(deleted_entries) = deleted.take() {
             // only move the deleted entries.
-            delete_stale_entries(handle.clone(), deleted_entries.0, deleted_entries.1)?;
+            delete_stale_entries(
+                handle.clone(),
+                deleted_entries.0,
+                deleted_entries.1,
+                user.clone(),
+            )?;
         }
     }
     if let StaleEntries::Found { dirs, videos, .. } = &stale_entries {
@@ -292,19 +297,26 @@ pub async fn upsert_read_os_dir(
         }
     }
 
-    let (main_folder, mut new_cfs, videos) =
-        read_os_folder_dir(&handle, dir, user_id, None, parent_path, stale_entries)?;
+    let (main_folder, mut new_cfs, mut videos) =
+        read_os_folder_dir(&handle, dir, user.id, None, parent_path, stale_entries)?;
     new_cfs.push(main_folder);
 
-    futures_util::stream::iter(videos.iter().enumerate())
-        .for_each_concurrent(/* Limit concurrency level */ 10, |(i, cf)| {
+    futures_util::stream::iter(videos.iter_mut().enumerate())
+        .for_each_concurrent(None, |(i, vid)| {
             let handle = handle.clone();
             async move {
-                if let Some(cip) = cf.cover_img_path.as_ref() {
-                    if let Err(e) =
-                        ffmpeg_extract_frame(&handle, Some(i + 3), &cf.path, Path::new(cip)).await
+                if let Some(cip) = vid.cover_img_path.as_ref() {
+                    match ffmpeg_extract_frame(&handle, Some(i + 3), &vid.path, Path::new(cip))
+                        .await
                     {
-                        eprintln!("Error processing video {}: {:?}", i, e);
+                        Ok(dur) => {
+                            if let Ok(dur) = MpvPlaybackData::get_duration(dur) {
+                                vid.duration = dur;
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("failed to process {} with ffmpeg {i}: {:?}", vid.path, e)
+                        }
                     }
                 }
             }
@@ -379,22 +391,7 @@ pub fn read_os_folder_dir(
         .collect::<Vec<OsVideo>>();
     total_videos.extend(current_folders_videos);
 
-    total_videos.par_sort_by(|a, b| {
-        // Extract the episode number from the title using regex
-        let num_a = EPISODE_TITLE_REGEX
-            .captures(&a.title)
-            .and_then(|caps| caps.get(1)) // Assuming the first capturing group contains the episode number
-            .and_then(|m| m.as_str().parse::<u32>().ok())
-            .unwrap_or(0);
-
-        let num_b = EPISODE_TITLE_REGEX
-            .captures(&b.title)
-            .and_then(|caps| caps.get(1))
-            .and_then(|m| m.as_str().parse::<u32>().ok())
-            .unwrap_or(0);
-
-        num_a.cmp(&num_b)
-    });
+    total_videos.par_sort_by(SortType::sort(&SortType::EpisodeTitleRegex));
 
     let first_video = total_videos.first().cloned();
     //println!("first_video: {:?}", first_video); // Debug statement
@@ -403,15 +400,20 @@ pub fn read_os_folder_dir(
     let child_folders_group: Vec<FolderGroup> = childfolder_paths
         .into_par_iter()
         .filter_map(|folder_path| {
-            read_os_folder_dir(
+            match read_os_folder_dir(
                 handle,
                 folder_path,
                 user_id.clone(),
                 update_datetime.clone(),
                 Some(path.clone()),
                 StaleEntries::None,
-            )
-            .ok()
+            ) {
+                Ok(f) => Some(f),
+                Err(e) => {
+                    eprintln!("failed to create OsFolder: {}", e);
+                    None
+                }
+            }
         })
         .collect();
 
@@ -439,7 +441,6 @@ pub fn read_os_folder_dir(
         update_date,
         update_time,
     };
-
     Ok((main_folder, total_child_folders, total_videos))
 }
 
@@ -530,43 +531,59 @@ pub fn join_cover_img_path(
     Ok(cover_img_full_path)
 }
 
+/// returns the full duration of the given video
+/// while also extracting the cover img frame
 pub async fn ffmpeg_extract_frame(
     handle: &AppHandle,
     index: Option<usize>,
     entry_path: impl AsRef<str>,
-    entry_frame_full_path: &Path,
-) -> Result<(), MpvError> {
-    println!("calling ffmpeg sidecar for: {:?}", entry_frame_full_path);
+    cover_img_path: &Path,
+) -> Result<String, FfmpegError> {
     let frame_index = index.unwrap_or(5).to_string();
-    let sidecar_cmd = handle.shell().sidecar("ffmpeg").unwrap().args([
+    // Arguments for ffmpeg to extract a frame and to retrieve video duration
+    let args = [
         "-ss",
         frame_index.as_str(),
         "-i",
         entry_path.as_ref(),
         "-frames:v",
         "1",
-        &entry_frame_full_path.to_string_lossy(),
-    ]);
+        &cover_img_path.to_string_lossy(),
+    ];
 
-    let (mut rx, mut child) = sidecar_cmd.spawn().unwrap();
+    // Spawn ffmpeg process
+    let sidecar_cmd = handle.shell().sidecar("ffmpeg")?.args(args);
+    let (mut rx, _) = sidecar_cmd.spawn()?;
 
+    let mut stderr = String::new();
+    let mut duration = None;
     while let Some(event) = rx.recv().await {
         match event {
-            // CommandEvent::Stdout(line) => {
-            //     println!("stdout: {}", String::from_utf8_lossy(&line));
-            // }
             CommandEvent::Stderr(line) => {
-                //eprintln!("stderr: {}", String::from_utf8_lossy(&line));
+                let line = String::from_utf8_lossy(&line);
+                if line.contains("Duration:") {
+                    // The line will look like "Duration: 00:23:45.00, start: 0.000000, bitrate: 1000 kb/s"
+                    if let Some(duration_str) = line.split("Duration:").nth(1) {
+                        if let Some(duration_clean) = duration_str.split(',').next() {
+                            //println!("Found duration: {}", duration_clean.trim());
+                            let n_duration = duration_clean.trim();
+                            duration = Some(n_duration.to_string());
+                        }
+                    }
+                }
+                stderr.push_str(&line);
             }
-            CommandEvent::Terminated(_) => {
-                // Process has finished
-                return Ok(());
+            CommandEvent::Error(e) => {
+                stderr.push_str(&format!("\nexit error:\n{}", e));
             }
-            _ => {}
+            CommandEvent::Terminated(_) => match duration {
+                Some(dur) => return Ok(dur.to_string()),
+                None => return Err(FfmpegError::StdErr(stderr)),
+            },
+            _ => return Err(FfmpegError::ProcessInterrupted),
         }
     }
-
-    Ok(())
+    Err(FfmpegError::ProcessInterrupted)
 }
 
 pub fn normalize_path(path: &str) -> PathBuf {
@@ -577,21 +594,18 @@ pub fn normalize_path(path: &str) -> PathBuf {
 }
 
 pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Result<u32, MpvError> {
+    //println!("looking for selected video: {selected_video_path}");
     let mut media_files: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
-        .par_bridge()
         .filter_map(|entry| entry.ok())
         .collect();
-
     media_files.retain(|entry| {
         if let Ok(metadata) = entry.metadata() {
             if metadata.is_file() {
                 if let Some(extension) = entry.path().extension() {
                     if let Some(extension_str) = extension.to_str() {
                         let extension_str = extension_str.to_lowercase();
-                        // Check if it's a supported video, audio, or subtitle format
                         return SUPPORTED_VIDEO_FORMATS.get_key(&extension_str).is_some()
-                            || SUPPORTED_AUDIO_FORMATS.get_key(&extension_str).is_some()
-                            || SUPPORTED_SUBTITLE_FORMATS.get_key(&extension_str).is_some();
+                            || SUPPORTED_AUDIO_FORMATS.get_key(&extension_str).is_some();
                     }
                 }
             }
@@ -600,21 +614,21 @@ pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Resu
     });
 
     media_files.par_sort_by(|a, b| {
-        // Extract the episode number from the title using regex
         let num_a = EPISODE_TITLE_REGEX
-            .captures(&a.file_name().to_string_lossy())
-            .and_then(|caps| caps.get(1)) // Assuming the first capturing group contains the episode number
+            .captures(a.file_name().to_str().unwrap())
+            .and_then(|caps| caps.get(caps.len() - 1))
             .and_then(|m| m.as_str().parse::<u32>().ok())
             .unwrap_or(0);
-
         let num_b = EPISODE_TITLE_REGEX
-            .captures(&b.file_name().to_string_lossy())
-            .and_then(|caps| caps.get(1))
+            .captures(b.file_name().to_str().unwrap())
+            .and_then(|caps| caps.get(caps.len() - 1))
             .and_then(|m| m.as_str().parse::<u32>().ok())
             .unwrap_or(0);
-
         num_a.cmp(&num_b)
     });
+
+    // debug for the media files
+    //dbg!(&media_files);
 
     let selected_video_file_name = match Path::new(&selected_video_path).file_name() {
         Some(file_name) => file_name,
@@ -622,9 +636,9 @@ pub fn find_video_index(parent_path: &Path, selected_video_path: String) -> Resu
     };
 
     let current_video_index = media_files
-        .par_iter()
-        .position_any(|entry| entry.file_name() == selected_video_file_name);
-
+        .iter()
+        .position(|entry| entry.file_name() == selected_video_file_name);
+    //dbg!(current_video_index);
     match current_video_index {
         Some(index) => Ok(index as u32),
         None => Err(MpvError::OsVideoNotFound(selected_video_path)),
