@@ -4,11 +4,8 @@ import { OsFolder, OsVideo, UserType } from "../../../models";
 import { Transition } from "solid-transition-group";
 import { Platform } from "@tauri-apps/plugin-os";
 import HeaderLastWatchedVideo from "./header-last-watched-video";
-import { cn } from "../../../libs/cn";
+import { cn, escapeCSSUrl } from "../../../libs/cn";
 
-export function escapeCSSUrl(url: string) {
-  return url.replace(/\(/g, '\\(').replace(/\)/g, '\\)');
-}
 
 export default function ({
   user,
@@ -22,7 +19,8 @@ export default function ({
   currentPlatform: Platform,
 }) {
 
-  console.log(mainParentFolder()?.last_watched_video)
+  console.log(`${mainParentFolder()?.title}'s last watched video:`, mainParentFolder()?.last_watched_video);
+  console.log(`${mainParentFolder()?.title}'s cover_img_path: ${mainParentFolder()?.cover_img_path}`);
 
   return (
     <Transition
@@ -42,26 +40,24 @@ export default function ({
         )}>
         <Show
           when={mainParentFolder() && user()}>
-          <Show
-            when={mainParentFolder()?.last_watched_video?.cover_img_path || mainParentFolder()?.cover_img_path}>
             <div
               class="absolute inset-0 z-0"
               style={{
-                "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),
-						url(${mainParentFolder()?.last_watched_video ?
-                    escapeCSSUrl(
-                      convertFileSrc(mainParentFolder()?.last_watched_video?.cover_img_path!))
+                "background-image": `linear-gradient(rgba(0, 0, 0, .2), rgba(0, 0, 0, .2)),
+  url(${mainParentFolder()?.last_watched_video ?
+
+                    escapeCSSUrl(convertFileSrc(mainParentFolder()?.last_watched_video?.cover_img_path!))
                     :
-                    escapeCSSUrl(
-                      convertFileSrc(mainParentFolder()?.cover_img_path!))
+
+                    escapeCSSUrl(convertFileSrc(mainParentFolder()?.cover_img_path!))
                   })`,
+                "background-color": "#111",
                 "background-size": "cover",
                 "background-repeat": "no-repeat",
                 "background-position": "start",
-                filter: "blur(6px)",
+                filter: "blur(2px)",
               }}
             />
-          </Show>
           <h1
             class="text-secondary/100 mix-blend-hard-light w-fit font-semibold z-10 relative
 				text-2xl px-1 md:text-3xl md:py-0.5
