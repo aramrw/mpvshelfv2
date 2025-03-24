@@ -53,6 +53,7 @@ export default function Library() {
       childFolders.state === "ready" &&
       osVideos.state === "ready"
     ) {
+      console.log(`${mainParentFolder()?.title}'s childFolders:`, childFolders());
       const isRefetch = await upsert_read_os_dir(
         mainParentFolder()?.path!,
         mainParentFolder()?.parent_path,
