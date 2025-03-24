@@ -5,23 +5,23 @@ use database::{create_default_user, init_database};
 use tauri::Manager;
 use tray::kill_dup_process;
 
+mod data;
 mod database;
 mod error;
 mod fs;
 mod misc;
 mod mpv;
 mod tray;
-mod data;
 
+use crate::data::{export_all_data, export_portable_config, import_all_data};
 use crate::database::{
     delete_os_folders, get_default_user, get_os_folder_by_path, get_os_folders,
-    get_os_folders_by_path, get_os_videos, get_user_by_id, update_os_folders, update_os_videos,
-    update_user,
+    get_os_folders_by_path, get_os_videos, get_os_videos_from_path, get_user_by_id,
+    update_os_folders, update_os_videos, update_user,
 };
 use crate::fs::{check_cover_img_exists, download_mpv_binary, show_in_folder, upsert_read_os_dir};
 use crate::mpv::{mpv_system_check, play_video};
 use crate::tray::init_tray;
-use crate::data::export_portable_config;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -47,6 +47,7 @@ pub fn run() {
             update_os_folders,
             delete_os_folders,
             get_os_videos,
+            get_os_videos_from_path,
             update_os_videos,
             upsert_read_os_dir,
             check_cover_img_exists,
@@ -57,6 +58,8 @@ pub fn run() {
             upsert_read_os_dir,
             create_default_user,
             export_portable_config,
+            export_all_data,
+            import_all_data,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
