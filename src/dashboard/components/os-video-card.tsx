@@ -10,7 +10,7 @@ import { Transition } from "solid-transition-group";
 import { VideoDescription } from "../../main-components/description/video-desc";
 import play_video from "../../tauri-cmds/mpv/play_video";
 import get_os_folder_by_path from "../../tauri-cmds/os_folders/get_os_folder_by_path";
-import { get_os_videos } from "../../tauri-cmds/os_videos/get_os_videos";
+import { get_os_videos_from_path } from "../../tauri-cmds/os_videos/get_os_videos";
 import GenericContextMenu from "../../main-components/generic-context-menu";
 
 
@@ -28,7 +28,7 @@ const OsVideoCard = ({
 
   const [osVideos, { mutate: _mutateVideos, refetch: _refetchChildVideos }] = createResource(
     () => (mainParentFolder() ? mainParentFolder()?.path : null),
-    (parentPath: string) => get_os_videos(parentPath),
+    (parentPath: string) => get_os_videos_from_path(parentPath),
   );
 
   return (

@@ -10,13 +10,14 @@ import { useParams, Params } from "@solidjs/router";
 import MpvTabSection from "./tab-sections/mpv";
 import get_default_user from "../../tauri-cmds/user/get_default_user";
 import { SettingsType, UserType } from "../../models";
-import { IconAdjustments } from "@tabler/icons-solidjs";
+import { IconAdjustments, IconDatabase } from "@tabler/icons-solidjs";
 import IconMpv from "../../main-components/icons/icon-mpv";
 import ProfileTabSection from "./tab-sections/profile";
 import SettingsErrorCard from "./tab-sections/error-card";
 import NavBar from "../../main-components/navbar";
 import { Transition } from "solid-transition-group";
 import update_user from "../../tauri-cmds/user/update-user";
+import DataTabSection from "./tab-sections/data";
 
 const handleSettingParams = (params: Params): string[] | string => {
   // example param: mpv_ERROR_Error: This is a test Error.
@@ -123,11 +124,22 @@ export default function Settings() {
                   class="ml-0.5 w-3 stroke-[2.4px]"
                 />
               </TabsTrigger>
+              <TabsTrigger value="data">
+                Data
+                <IconDatabase
+                  class="ml-0.5 w-3 stroke-[2.4px]"
+                />
+              </TabsTrigger>
               <TabsIndicator />
             </TabsList>
             <Show when={user.latest}>
               <ProfileTabSection user={user.latest!} />
               <MpvTabSection
+                user={user.latest!}
+                opts={opts as Accessor<SettingsType>}
+                setOpts={setOpts as Setter<SettingsType>}
+              />
+              <DataTabSection
                 user={user.latest!}
                 opts={opts as Accessor<SettingsType>}
                 setOpts={setOpts as Setter<SettingsType>}

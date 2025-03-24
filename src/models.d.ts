@@ -14,7 +14,7 @@ export type SettingsType = {
 
 export type MpvSettingsType = {
   exe_path: string | undefined;
-	config_path: string | undefined;
+  config_path: string | undefined;
   plugins_path?: string;
   autoplay: boolean;
 };
@@ -66,4 +66,4 @@ export type FolderContains = {
   folders: number;
 }
 
-export type SortType = "none" | "updated" | "episode_title_regex";
+export type SortType = "None" | "Updated" | "EpisodeTitleRegex";

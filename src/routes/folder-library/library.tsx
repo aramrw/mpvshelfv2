@@ -4,7 +4,7 @@ import LibraryVideosSection from "./video/videos-section";
 import { batch, createEffect, createResource, createSignal, Show } from "solid-js";
 import NavBar from "../../main-components/navbar";
 import get_user_by_id from "../../tauri-cmds/user/get_user_by_id";
-import { get_os_videos } from "../../tauri-cmds/os_videos/get_os_videos";
+import { get_os_videos_from_path } from "../../tauri-cmds/os_videos/get_os_videos";
 import get_os_folder_by_path from "../../tauri-cmds/os_folders/get_os_folder_by_path";
 import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { IconDeviceTvFilled, IconFolderFilled } from "@tabler/icons-solidjs";
@@ -24,7 +24,7 @@ export default function Library() {
 
   const [osVideos, { mutate: mutateVideos, refetch: refetchChildVideos }] = createResource(
     () => (mainParentFolder() ? mainParentFolder()?.path : null),
-    (parentPath: string) => get_os_videos(parentPath, "episode_title_regex").catch((e) => {
+    (parentPath: string) => get_os_videos_from_path(parentPath, "EpisodeTitleRegex").catch((e) => {
       if (!e.includes("0")) {
         console.error(e);
       }

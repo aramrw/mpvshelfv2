@@ -10,7 +10,7 @@ import { get_os_folders } from "../tauri-cmds/os_folders/get_os_folders";
 import get_default_user from "../tauri-cmds/user/get_default_user";
 import { platform } from "@tauri-apps/plugin-os";
 import HeaderLastWatchedVideo from "../routes/folder-library/header/header-last-watched-video";
-import { get_os_videos } from "../tauri-cmds/os_videos/get_os_videos";
+import { get_os_videos_from_path } from "../tauri-cmds/os_videos/get_os_videos";
 import get_os_folder_by_path from "../tauri-cmds/os_folders/get_os_folder_by_path";
 import { Transition } from "solid-transition-group";
 import Spinner from "../main-components/icons/spinner";
@@ -58,7 +58,7 @@ export default function Dashboard() {
 
   const [osVideos] = createResource(
     () => (mainParentFolder()?.path ? mainParentFolder()?.path : null),
-    (parentPath: string) => get_os_videos(parentPath, "updated"),
+    (parentPath: string) => get_os_videos_from_path(parentPath, "Updated"),
   );
 
   return (
