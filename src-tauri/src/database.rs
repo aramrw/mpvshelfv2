@@ -429,9 +429,9 @@ impl FromStr for SortType {
     type Err = SortTypeError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "none" => Ok(Self::None),
-            "episode_title_regex" => Ok(Self::EpisodeTitleRegex),
-            "updated" => Ok(Self::Updated),
+            "none" | "None" => Ok(Self::None),
+            "episode_title_regex" | "EpisodeTitleRegex" => Ok(Self::EpisodeTitleRegex),
+            "updated" | "Updated" => Ok(Self::Updated),
             _ => Err(SortTypeError::FromStr(s.to_string())),
         }
     }
@@ -441,7 +441,7 @@ impl FromStr for SortType {
 pub fn get_os_folders(
     handle: AppHandle,
     user_id: String,
-    sort_type: String,
+    sort_type: SortType,
 ) -> Result<Vec<OsFolder>, DatabaseError> {
     let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
     let db = Builder::new().create(&DBMODELS, db_path)?;
@@ -454,7 +454,6 @@ pub fn get_os_folders(
         .try_collect()?;
 
     folders.retain(|folder| folder.parent_path.is_none());
-    let sort_type = SortType::from_str(&sort_type)?;
     folders.par_sort_by(SortType::sort(&sort_type));
 
     if folders.is_empty() {
@@ -502,6 +501,7 @@ pub fn get_os_folders_by_path(
         .start_with(Some(parent_path.as_str()))?
         .try_collect()?;
 
+    folders.retain(|f| f.parent_path.as_deref() == Some(parent_path.as_str()));
     let sort_type = SortType::from_str(&sort_type)?;
     folders.par_sort_by(sort_type.sort());
 
@@ -565,6 +565,33 @@ pub fn update_os_videos(handle: AppHandle, os_videos: Vec<OsVideo>) -> Result<()
 
 #[command]
 pub fn get_os_videos(
+    handle: AppHandle,
+    user_id: String,
+    sort_type: SortType,
+) -> Result<Vec<OsVideo>, DatabaseError> {
+    let db_path = handle.state::<PathBuf>().to_string_lossy().to_string();
+    let db = Builder::new().create(&DBMODELS, db_path)?;
+
+    let rtx = db.r_transaction()?;
+    let mut folders: Vec<OsVideo> = rtx
+        .scan()
+        .secondary(OsVideoKey::user_id)?
+        .start_with(user_id.as_str())?
+        .try_collect()?;
+
+    folders.par_sort_by(SortType::sort(&sort_type));
+
+    if folders.is_empty() {
+        return Err(DatabaseError::OsFoldersNotFound(format!(
+            "0 OsVideos found belonging to user_id: {user_id}",
+        )));
+    }
+
+    Ok(folders)
+}
+
+#[command]
+pub fn get_os_videos_from_path(
     handle: AppHandle,
     main_folder_path: String,
     sort_type: String,
