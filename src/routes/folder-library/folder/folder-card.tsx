@@ -9,6 +9,7 @@ import { Transition } from "solid-transition-group";
 import { FolderDescription } from "../../../main-components/description/folder-desc";
 import GenericContextMenu from "../../../main-components/generic-context-menu";
 import { Platform } from "@tauri-apps/plugin-os";
+import { escapeCSSUrl } from "../../../libs/cn";
 
 const LibraryFolderCard = ({
   index,
@@ -36,7 +37,7 @@ const LibraryFolderCard = ({
             class="absolute inset-0 z-0"
             style={{
               "background-image": `linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.2)),
-								url(${convertFileSrc(folder?.cover_img_path ?? "")})`,
+								url(${escapeCSSUrl(convertFileSrc(folder?.cover_img_path ?? ""))})`,
               "background-size": "cover",
               "background-repeat": "no-repeat",
               "background-position": "center",
