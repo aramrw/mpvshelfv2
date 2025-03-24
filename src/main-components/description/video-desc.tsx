@@ -38,7 +38,7 @@ export const VideoDescription: Component<VideoDescProps> = (props) => {
 						group-hover:opacity-100 transition-all duration-75 
 						flex flex-col items-start justify-between 
 						text-white px-4 py-3 transform-gpu
-						backdrop-blur-sm select-none 
+						backdrop-blur-sm select-none will-change-auto 
 						cursor-pointer ${props.className}`
       }
       onClick={props.onClick}

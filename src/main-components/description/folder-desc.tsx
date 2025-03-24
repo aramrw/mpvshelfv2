@@ -14,7 +14,7 @@ export const FolderDescription: Component<FolderDescriptionProps> = (props) => {
 
   return (
     <div
-      class="absolute inset-0 z-50 h-full w-full max-w-full bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-75 flex flex-col items-start justify-between text-white px-2.5 py-1.5 backdrop-blur-sm rounded-sm"
+      class="absolute inset-0 z-50 h-full w-full max-w-full bg-black/80 opacity-0 group-hover:opacity-100 transition-all duration-75 flex flex-col items-start justify-between text-white px-2.5 py-1.5 backdrop-blur-sm rounded-sm transform-gpu"
       onClick={props.onClick}
     >
       <div

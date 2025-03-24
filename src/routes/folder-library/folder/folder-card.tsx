@@ -28,9 +28,9 @@ const LibraryFolderCard = ({
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <div class="h-56 max-w-[450px] cursor-pointer relative w-full border-[1.5px] bg-foreground 
+        <div class="h-40 w-48 md:w-48 md:h-48 lg:w-56 lg:h-56 xl:w-60 xl:h-60 cursor-pointer relative border-[1.5px] bg-foreground 
 						border-primary/80 rounded-[2.5px] blur-0 shadow-black/100 shadow-md flex items-center 
-						justify-center overflow-hidden will-change-transform transition-all group"
+						justify-center overflow-hidden transform-gpu transition-all group"
           onClick={onClick}
         >
           <div

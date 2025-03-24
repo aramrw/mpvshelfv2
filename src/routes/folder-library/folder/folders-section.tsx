@@ -38,10 +38,9 @@ export default function LibraryFoldersSection({
       >
         <section
           class="md:px-16 lg:px-32 xl:px-56 overflow-hidden w-full h-fit px-2 pb-4 relative 
-				border-b-white border-b-2 shadow-lg shadow-primary/10">
+				border-b-white border-b-2 shadow-lg shadow-primary/10 transform-gpu">
           <ul
-            class="mx-auto h-fit w-fit grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 
-					xl:grid-cols-4 gap-6 justify-center items-center">
+            class="h-fit w-fit flex flex-row gap-6 justify-start items-start">
             <For each={childFolders()}>
               {(folder, index) => (
                 <LibraryFolderCard
